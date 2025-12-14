@@ -146,11 +146,11 @@ def remove_first_and_last_line(directory):
  
 # MAIN
  
-def main():
+def main(config_file):
     with open("generated_tests.json", "r", encoding="utf-8") as f:
         all_tests = json.load(f)
 
-    baseUrl = get_base_url("config.properties")
+    baseUrl = get_base_url(config_file)
     if not baseUrl:
         raise RuntimeError("Base URL not found in config.properties")
 
@@ -180,4 +180,4 @@ def main():
     remove_first_and_last_line(OUTPUT_DIR)
 
 if __name__ == "__main__":
-    main()
+    main("config.properties")

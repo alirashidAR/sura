@@ -1,152 +1,167 @@
+import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import io.restassured.path.json.JsonPath;
+import io.restassured.response.Response;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.equalTo;
 
-public class PetApiTest {
-
-    private String basePath = "/pet";
+public class PetAPITest {
 
     @BeforeClass
     public void setup() {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // Group test methods by HTTP method using comments
-
-    /**
-     * Test Cases for GET Method
-     */
-
-    @Test(description = "Test Case 6: Get Pet with Valid ID")
-    public void getPetWithValidId() {
-        given()
+    // POST Tests
+    @Test
+    public void testPostValidPetObject() {
+        Response response = given().contentType(ContentType.JSON)
+                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":[\"dog\",\"cute\"]}")
                 .when()
-                .get(basePath + "/12345")
+                .post("/pet")
                 .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "Test Case 7: Get Pet with Invalid ID")
-    public void getPetWithInvalidId() {
-        given()
-                .when()
-                .get(basePath + "/99999")
-                .then()
-                .statusCode(404);
-    }
-
-    // Group test methods by HTTP method using comments
-
-    /**
-     * Test Cases for POST Method
-     */
-
-    @Test(description = "Test Case 8: Create Pet with Valid Object")
-    public void createPetWithValidObject() {
-        given()
-                .contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":\"dog\"}")
-                .when()
-                .post(basePath)
-                .then()
+                .assertThat()
                 .statusCode(201);
     }
 
-    @Test(description = "Test Case 9: Create Pet with Invalid Object")
-    public void createPetWithInvalidObject() {
-        given()
-                .contentType(ContentType.JSON)
-                .body("{}")
+    @Test
+    public void testPostInvalidId() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":null,\"name\":\"Max\",\"tag\":[\"dog\",\"cute\"]}")
                 .when()
-                .post(basePath)
+                .post("/pet")
                 .then()
-                .statusCode(400);
-    }
-
-    // Group test methods by HTTP method using comments
-
-    /**
-     * Test Cases for PUT Method
-     */
-
-    @Test(description = "Test Case 10: Update Pet with Valid Object")
-    public void updatePetWithValidObject() {
-        given()
-                .contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":\"dog\"}")
-                .when()
-                .put(basePath + "/12345")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "Test Case 11: Update Pet with Invalid Object")
-    public void updatePetWithInvalidObject() {
-        given()
-                .contentType(ContentType.JSON)
-                .body("{}")
-                .when()
-                .put(basePath + "/12345")
-                .then()
-                .statusCode(400);
-    }
-
-    @Test(description = "Test Case 12: Update Pet with Valid Object and Optional Fields")
-    public void updatePetWithValidObjectAndOptionalFields() {
-        given()
-                .contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":\"dog\",\"status\":\"available\"}")
-                .when()
-                .put(basePath + "/12345")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "Test Case 13: Update Pet with Invalid Content-Type Header")
-    public void updatePetWithInvalidContentTypeHeader() {
-        given()
-                .contentType(ContentType.TEXT)
-                .body("")
-                .when()
-                .put(basePath + "/12345")
-                .then()
+                .assertThat()
                 .statusCode(405);
     }
 
-    @Test(description = "Test Case 14: Update Pet with No Body")
-    public void updatePetWithNoBody() {
-        given()
+    @Test
+    public void testPostInvalidName() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":12345,\"name\":null,\"tag\":[\"dog\",\"cute\"]}")
                 .when()
-                .put(basePath + "/12345")
+                .post("/pet")
                 .then()
-                .statusCode(400);
+                .assertThat()
+                .statusCode(405);
     }
 
-    // Group test methods by HTTP method using comments
-
-    /**
-     * Test Cases for DELETE Method
-     */
-
-    @Test(description = "Test Case 15: Delete Pet with Valid ID")
-    public void deletePetWithValidId() {
-        given()
+    @Test
+    public void testPostInvalidTag() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":null}")
                 .when()
-                .delete(basePath + "/12345")
+                .post("/pet")
                 .then()
+                .assertThat()
+                .statusCode(405);
+    }
+
+    @Test
+    public void testPostEmptyPetObject() {
+        given().contentType(ContentType.JSON)
+                .body("{}")
+                .when()
+                .post("/pet")
+                .then()
+                .assertThat()
+                .statusCode(405);
+    }
+
+    @Test
+    public void testPostLargePetObject() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":[\"dog\",\"cute\",\"playful\",\"smart\"]}")
+                .when()
+                .post("/pet")
+                .then()
+                .assertThat()
+                .statusCode(201);
+    }
+
+    @Test
+    public void testPostExcessiveFields() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":[\"dog\",\"cute\",\"playful\",\"smart\",\"large\",\"heavy\"]}")
+                .when()
+                .post("/pet")
+                .then()
+                .assertThat()
+                .statusCode(405);
+    }
+
+    @Test
+    public void testPostJsonParsingError() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":12345,\"name\":\"Max\"")
+                .when()
+                .post("/pet")
+                .then()
+                .assertThat()
+                .statusCode(405);
+    }
+
+    // PUT Tests
+    @Test
+    public void testPutValidPetUpdate() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":1,\"category\":{\"id\":2,\"name\":\"Dog\"},\"name\":\"Buddy\",\"photoUrls\":[\"url1\",\"url2\"],\"tags\":[{\"id\":4,\"name\":\"tag1\"}]}")
+                .when()
+                .put("/pet/{petId}", 1)
+                .then()
+                .assertThat()
                 .statusCode(200);
     }
 
-    @Test(description = "Test Case 16: Delete Pet with Invalid ID")
-    public void deletePetWithInvalidId() {
-        given()
+    @Test
+    public void testPutInvalidID() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":-1,\"category\":{\"id\":2,\"name\":\"Dog\"},\"name\":\"Buddy\",\"photoUrls\":[\"url1\",\"url2\"],\"tags\":[{\"id\":4,\"name\":\"tag1\"}]}")
                 .when()
-                .delete(basePath + "/99999")
+                .put("/pet/{petId}", 1)
                 .then()
+                .assertThat()
+                .statusCode(400);
+    }
+
+    @Test
+    public void testPutPetNotfoundUpdate() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":999,\"category\":{\"id\":2,\"name\":\"Dog\"},\"name\":\"Buddy\",\"photoUrls\":[\"url1\",\"url2\"],\"tags\":[{\"id\":4,\"name\":\"tag1\"}]}")
+                .when()
+                .put("/pet/{petId}", 1)
+                .then()
+                .assertThat()
                 .statusCode(404);
+    }
+
+    @Test
+    public void testPutEmptyBodyUpdate() {
+        given().contentType(ContentType.JSON)
+                .body("{}")
+                .when()
+                .put("/pet/{petId}", 1)
+                .then()
+                .assertThat()
+                .statusCode(400);
+    }
+
+    @Test
+    public void testPutInvalidJsonFormatUpdate() {
+        given().contentType(ContentType.JSON)
+                .body("{\"id\":\"string\"}")
+                .when()
+                .put("/pet/{petId}", 1)
+                .then()
+                .assertThat()
+                .statusCode(400);
+    }
+
+    @AfterClass
+    public void tearDown() {
+        RestAssured.reset();
     }
 }

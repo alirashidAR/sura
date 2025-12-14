@@ -1,6 +1,13 @@
-import io.restassured.RestAssured;
+import io.restassured.http.Method;
+import io.restassured.path.json.JsonPath;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static java.time.format.DateTimeFormatter.ofPattern;
+import static java.time.LocalDateTime.now;
 
 public class UserLoginTest {
 
@@ -9,90 +16,175 @@ public class UserLoginTest {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // GROUP GET TESTS BY HTTP METHOD
-    /**
-     * Test case for getting user login response with valid credentials
-     */
-    @Test
-    public void testGetValidUserLoginResponse() {
-        Response response = given().queryParam("username", "test_user").queryParam("password", "test_password")
-                .when()
-                .get("/user/login");
+    // GET Tests
 
-        then()
-                .statusCode(200)
-                .body("headers.X-Expires-After", equalTo("2024-04-30T12:00:00Z"))
-                .body("headers.X-Rate-Limit", equalTo(100));
+    @Test(description = "Valid Login")
+    public void testValidLogin() {
+        given(Method.GET, "/user/login?username=valid_user&password=correct_password").
+                then().statusCode(200).
+                body("X-Expires-After", equalTo(now().format(ofPattern("yyyy-MM-dd HH:mm:ss")))).
+                body("X-Rate-Limit", equalTo("100")).
+                body("token", equalTo("$.schema"));
     }
 
-    /**
-     * Test case for getting user login response with empty username and password
-     */
-    @Test
-    public void testGetInvalidUserLoginResponse() {
-        Response response = given().queryParam("username", "").queryParam("password", "")
-                .when()
-                .get("/user/login");
-
-        then()
-                .statusCode(400)
-                .body("message", equalTo("Invalid username/password supplied"));
+    @Test(description = "Empty Username")
+    public void testEmptyUsername() {
+        given(Method.GET, "/user/login?username=&password=correct_password").
+                then().statusCode(400);
     }
 
-    /**
-     * Test case for getting user login response with null username and password
-     */
-    @Test
-    public void testGetNullUserLoginResponse() {
-        Response response = given().queryParam("username", (Object) null).queryParam("password", (Object) null)
-                .when()
-                .get("/user/login");
-
-        then()
-                .statusCode(400)
-                .body("message", equalTo("Invalid username/password supplied"));
+    @Test(description = "Empty Password")
+    public void testEmptyPassword() {
+        given(Method.GET, "/user/login?username=valid_user&password=").
+                then().statusCode(400);
     }
 
-    /**
-     * Test case for getting user login response with valid username and empty password
-     */
-    @Test
-    public void testGetValidUsernameEmptyPasswordUserLoginResponse() {
-        Response response = given().queryParam("username", "test_user").queryParam("password", "")
-                .when()
-                .get("/user/login");
-
-        then()
-                .statusCode(400)
-                .body("message", equalTo("Invalid username/password supplied"));
+    @Test(description = "Non-Alphanumeric Username")
+    public void testNonAlphanumericUsername() {
+        given(Method.GET, "/user/login?username=@#$%^&*()&password=correct_password").
+                then().statusCode(400);
     }
 
-    /**
-     * Test case for getting user login response with empty username and valid password
-     */
-    @Test
-    public void testGetEmptyUsernameValidPasswordUserLoginResponse() {
-        Response response = given().queryParam("username", "").queryParam("password", "test_password")
-                .when()
-                .get("/user/login");
+    // POST Tests
 
-        then()
-                .statusCode(400)
-                .body("message", equalTo("Invalid username/password supplied"));
+    @Test(description = "Valid Login with Body")
+    public void testValidLoginWithBody() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"valid_user\",\"password\":\"correct_password\"}").
+                asJson();
+        String token = response.getString("token");
+        assertThat(token, equalTo("$.schema"));
     }
 
-    /**
-     * Test case for getting user login response with valid credentials and weak password
-     */
-    @Test
-    public void testGetValidUserLoginResponseWithWeakPassword() {
-        Response response = given().queryParam("username", "test_user").queryParam("password", "123456")
-                .when()
-                .get("/user/login");
+    @Test(description = "Invalid Password with Body")
+    public void testInvalidPasswordWithBody() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"valid_user\",\"password\":\"incorrect_password\"}").
+                asJson();
+        String token = response.getString("token");
+        assertThat(token, equalTo(""));
+    }
 
-        then()
-                .statusCode(200)
-                .body("headers.X-Expires-After", equalTo("2024-04-30T12:00:00Z"))
-                .body("headers.X-Rate-Limit", equalTo(100));
+    @Test(description = "Empty Username with Body")
+    public void testEmptyUsernameWithBody() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"\",\"password\":\"correct_password\"}").
+                asJson();
+        String token = response.getString("token");
+        assertThat(token, equalTo(""));
+    }
+
+    @Test(description = "Empty Password with Body")
+    public void testEmptyPasswordWithBody() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"valid_user\",\"password\":\"\"}").
+                asJson();
+        String token = response.getString("token");
+        assertThat(token, equalTo(""));
+    }
+
+    @Test(description = "Non-Alphanumeric Username with Body")
+    public void testNonAlphanumericUsernameWithBody() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"@#$%^&*()\"," +
+                                "\"password\":\"correct_password\"}").
+                asJson();
+        String token = response.getString("token");
+        assertThat(token, equalTo(""));
+    }
+
+    // PUT Tests
+
+    @Test(description = "Valid Login with Path Param")
+    public void testValidLoginWithPathParam() {
+        given(Method.PUT, "/user/login/{username}/{password}",
+                        "valid_user", "correct_password").
+                then().statusCode(200);
+    }
+
+    @Test(description = "Invalid Password with Path Param")
+    public void testInvalidPasswordWithPathParam() {
+        given(Method.PUT, "/user/login/{username}/{password}",
+                        "valid_user", "incorrect_password").
+                then().statusCode(400);
+    }
+
+    @Test(description = "Empty Username with Path Param")
+    public void testEmptyUsernameWithPathParam() {
+        given(Method.PUT, "/user/login/{username}/{password}",
+                        "", "correct_password").
+                then().statusCode(400);
+    }
+
+    @Test(description = "Empty Password with Path Param")
+    public void testEmptyPasswordWithPathParam() {
+        given(Method.PUT, "/user/login/{username}/{password}",
+                        "valid_user", "").
+                then().statusCode(400);
+    }
+
+    @Test(description = "Non-Alphanumeric Username with Path Param")
+    public void testNonAlphanumericUsernameWithPathParam() {
+        given(Method.PUT, "/user/login/{username}/{password}",
+                        "@#$%^&*()", "correct_password").
+                then().statusCode(400);
+    }
+
+    // DELETE Tests
+
+    @Test(description = "Valid Login with Body and Delete")
+    public void testValidLoginWithBodyAndDelete() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"valid_user\",\"password\":\"correct_password\"}").
+                asJson();
+        String token = response.getString("token");
+        given(Method.DELETE, "/user/{token}",
+                        token).
+                then().statusCode(200);
+    }
+
+    @Test(description = "Invalid Password with Body and Delete")
+    public void testInvalidPasswordWithBodyAndDelete() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"valid_user\",\"password\":\"incorrect_password\"}").
+                asJson();
+        String token = response.getString("token");
+        given(Method.DELETE, "/user/{token}",
+                        token).
+                then().statusCode(400);
+    }
+
+    @Test(description = "Empty Username with Body and Delete")
+    public void testEmptyUsernameWithBodyAndDelete() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"\",\"password\":\"correct_password\"}").
+                asJson();
+        String token = response.getString("token");
+        given(Method.DELETE, "/user/{token}",
+                        token).
+                then().statusCode(400);
+    }
+
+    @Test(description = "Empty Password with Body and Delete")
+    public void testEmptyPasswordWithBodyAndDelete() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"valid_user\",\"password\":\"\"}").
+                asJson();
+        String token = response.getString("token");
+        given(Method.DELETE, "/user/{token}",
+                        token).
+                then().statusCode(400);
+    }
+
+    @Test(description = "Non-Alphanumeric Username with Body and Delete")
+    public void testNonAlphanumericUsernameWithBodyAndDelete() {
+        JsonPath response = given(Method.POST, "/user/login",
+                        "{\"username\":\"@#$%^&*()\"," +
+                                "\"password\":\"correct_password\"}").
+                asJson();
+        String token = response.getString("token");
+        given(Method.DELETE, "/user/{token}",
+                        token).
+                then().statusCode(400);
     }
 }

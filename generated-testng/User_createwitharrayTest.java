@@ -1,92 +1,89 @@
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
+import io.restassured.RestAssured;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 public class CreateUserArrayTest {
 
-    private static final String BASE_URL = "https://api.example.com";
-    private Response response;
-
     @BeforeClass
     public void setup() {
-        RestAssured.baseURI = BASE_URL;
+        RestAssured.baseURI = "https://api.example.com";
     }
 
+    /**
+     * Group test methods by HTTP method using comments
+     */
+    
     // POST tests
-    @Test(dataProvider = "happyPath", dataProviderClass = DataProviders.class)
-    public void tc001HappyPath(String body) {
-        response = given().contentType(ContentType.JSON).body(body).when().post("/user/createWithArray");
-        System.out.println("Expected output for TC-001: Status - 201, Message - Users created successfully");
-        assert response.statusCode() == 201;
+    @Test(priority = 1)
+    public void createUsersValidData() {
+        // Test case: Create multiple users with valid data
+        RestAssured.given()
+                .when().post("/user/createWithArray")
+                .then().statusCode(201)
+                .body("users[0].name", hasItem("John Doe"))
+                .body("users[0].email", hasItem("john.doe@example.com"))
+                .body("users[1].name", hasItem("Jane Doe"))
+                .body("users[1].email", hasItem("jane.doe@example.com"));
     }
 
-    @Test(dataProvider = "singleUser", dataProviderClass = DataProviders.class)
-    public void tc002SingleUser(String body) {
-        response = given().contentType(ContentType.JSON).body(body).when().post("/user/createWithArray");
-        System.out.println("Expected output for TC-002: Status - 201, Message - User created successfully");
-        assert response.statusCode() == 201;
+    @Test(priority = 2)
+    public void createUsersInvalidData() {
+        // Test case: Create multiple users with invalid data
+        RestAssured.given()
+                .when().post("/user/createWithArray")
+                .then().statusCode(400)
+                .body("errors[0].message", hasItem("Name is required"))
+                .body("errors[1].message", hasItem("Email is required"));
     }
 
-    @Test(dataProvider = "invalidUser", dataProviderClass = DataProviders.class)
-    public void tc003InvalidUser(String body) {
-        response = given().contentType(ContentType.JSON).body(body).when().post("/user/createWithArray");
-        System.out.println("Expected output for TC-003: Status - 400, Error - Invalid user data: name cannot be null");
-        assert response.statusCode() == 400;
-    }
-
-    @Test(dataProvider = "emptyArray", dataProviderClass = DataProviders.class)
-    public void tc004EmptyArray(String body) {
-        response = given().contentType(ContentType.JSON).body(body).when().post("/user/createWithArray");
-        System.out.println("Expected output for TC-004: Status - 400, Error - Invalid request body: empty array of users");
-        assert response.statusCode() == 400;
+    @Test(priority = 3)
+    public void emptyInputArray() {
+        // Test case: Empty input array
+        RestAssured.given()
+                .when().post("/user/createWithArray")
+                .then().statusCode(204);
     }
 
     // GET tests
-    @Test
-    public void tc005GetAllUsers() {
-        response = given().when().get("/user/createWithArray");
-        System.out.println("Expected output for TC-005: Status - 200");
-        assert response.statusCode() == 200;
+    @Test(priority = 4)
+    public void getCreatedUsers() {
+        // Test case: Get created users
+        RestAssured.given()
+                .when().get("/users")
+                .then().statusCode(200)
+                .body("users[0].name", hasItem("John Doe"))
+                .body("users[1].email", hasItem("jane.doe@example.com"));
     }
 
     // PUT tests
-    @Test(dataProvider = "singleUser", dataProviderClass = DataProviders.class)
-    public void tc006UpdateSingleUser(String body) {
-        response = given().contentType(ContentType.JSON).body(body).when().put("/user/createWithArray");
-        System.out.println("Expected output for TC-006: Status - 200, Message - User updated successfully");
-        assert response.statusCode() == 200;
+    @Test(priority = 5)
+    public void updateExistingUser() {
+        // Test case: Update existing user
+        RestAssured.given()
+                .when().put("/user/{id}", 1, "{name=John Doe Updated}")
+                .then().statusCode(200);
+    }
+
+    @Test(priority = 6)
+    public void updateUserInvalidData() {
+        // Test case: Update existing user with invalid data
+        RestAssured.given()
+                .when().put("/user/{id}", 1, "{name=}")
+                .then().statusCode(400);
     }
 
     // DELETE tests
-    @Test(dataProvider = "singleUser", dataProviderClass = DataProviders.class)
-    public void tc007DeleteSingleUser(String body) {
-        response = given().contentType(ContentType.JSON).body(body).when().delete("/user/createWithArray");
-        System.out.println("Expected output for TC-007: Status - 200, Message - User deleted successfully");
-        assert response.statusCode() == 200;
+    @Test(priority = 7)
+    public void deleteUser() {
+        // Test case: Delete existing user
+        RestAssured.given()
+                .when().delete("/user/{id}", 1)
+                .then().statusCode(204);
     }
-
+    
     @AfterClass
     public void tearDown() {
-        response = null;
-    }
-}
-
-class DataProviders {
-    public String[] happyPath() {
-        return new String[] {"[{\"name\":\"John\",\"email\":\"john@example.com\"},{\"name\":\"Jane\",\"email\":\"jane@example.com\"}]"};
-    }
-
-    public String[] singleUser() {
-        return new String[] {"{\"name\":\"John\",\"email\":\"john@example.com\"}"};
-    }
-
-    public String[] invalidUser() {
-        return new String[] {"{\"name\":null,\"email\":\"john@example.com\"}"};
-    }
-
-    public String[] emptyArray() {
-        return new String[] {"[]"};
+        
     }
 }

@@ -1,107 +1,106 @@
 import io.restassured.RestAssured;
-import io.restassured.http.Method;
-import io.restassured.response.Response;
-import org.testng.annotations.AfterClass;
+import io.restassured.http.ContentType;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-public class StoreOrderTests {
+public class OrderApiTest {
 
     @BeforeClass
     public void setup() {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // GET tests
-    @Test(enabled = true, description = "Valid Order ID (1)")
-    public void getValidOrderId1() {
-        Response response = given(Method.GET, "/store/order/1")
+    // GROUP 1: GET Tests
+    @Test(description = "Valid Order ID")
+    public void validOrderId() {
+        int orderId = 1;
+        String path = "/store/order/" + orderId;
+        int statusCode = get(path, orderId).getStatusCode();
+        assert statusCode == 200 : "Expected status code 200 but got " + statusCode;
+    }
+
+    @Test(description = "Invalid Order ID - Too Low")
+    public void invalidOrderIdTooLow() {
+        int orderId = 0;
+        String path = "/store/order/" + orderId;
+        get(path, orderId).then().statusCode(400);
+    }
+
+    @Test(description = "Invalid Order ID - Too High")
+    public void invalidOrderIdTooHigh() {
+        int orderId = 11;
+        String path = "/store/order/" + orderId;
+        get(path, orderId).then().statusCode(400);
+    }
+
+    @Test(description = "Order ID Not Found")
+    public void orderNotFound() {
+        int orderId = 9999;
+        String path = "/store/order/" + orderId;
+        get(path, orderId).then().statusCode(404);
+    }
+
+    @Test(description = "Non-Integer Order ID")
+    public void nonIntegerOrderId() {
+        String orderId = "non-int";
+        String path = "/store/order/" + orderId;
+        get(path, orderId).then().statusCode(400);
+    }
+
+    private Response get(String path, int orderId) {
+        return RestAssured.given()
+                .pathParam("orderId", orderId)
+                .when()
+                .get(path)
                 .then()
-                .statusCode(200)
+                .contentType(ContentType.JSON)
                 .extract().response();
-        System.out.println(response.asString());
     }
 
-    @Test(enabled = true, description = "Valid Order ID (10)")
-    public void getValidOrderId10() {
-        Response response = given(Method.GET, "/store/order/10")
+    // GROUP 2: DELETE Tests
+    @Test(description = "Valid integer ID (positive)")
+    public void validIntegerIdPositive() {
+        int orderId = 1;
+        String path = "/store/order/" + orderId;
+        int statusCode = delete(path, orderId).getStatusCode();
+        assert statusCode == 200 : "Expected status code 200 but got " + statusCode;
+    }
+
+    @Test(description = "Valid integer ID (negative)")
+    public void validIntegerIdNegative() {
+        int orderId = -1;
+        String path = "/store/order/" + orderId;
+        delete(path, orderId).then().statusCode(400);
+    }
+
+    @Test(description = "Invalid integer ID (non-numeric)")
+    public void invalidIntegerIdNonNumeric() {
+        String orderId = "abc";
+        String path = "/store/order/" + orderId;
+        delete(path, orderId).then().statusCode(400);
+    }
+
+    @Test(description = "Order does not exist")
+    public void orderDoesNotExist() {
+        int orderId = 1;
+        String path = "/store/order/" + orderId;
+        delete(path, orderId).then().statusCode(404);
+    }
+
+    @Test(description = "Invalid integer ID (zero)")
+    public void invalidIntegerIdZero() {
+        int orderId = 0;
+        String path = "/store/order/" + orderId;
+        delete(path, orderId).then().statusCode(400);
+    }
+
+    private Response delete(String path, Object orderId) {
+        return RestAssured.given()
+                .pathParam("orderId", orderId)
+                .when()
+                .delete(path)
                 .then()
-                .statusCode(200)
+                .contentType(ContentType.JSON)
                 .extract().response();
-        System.out.println(response.asString());
-    }
-
-    @Test(enabled = true, description = "Invalid Order ID (0)")
-    public void getInvalidOrderId0() {
-        Response response = given(Method.GET, "/store/order/0")
-                .then()
-                .statusCode(400)
-                .extract().response();
-        System.out.println(response.asString());
-    }
-
-    @Test(enabled = true, description = "Invalid Order ID (negative)")
-    public void getInvalidOrderIdNegative() {
-        Response response = given(Method.GET, "/store/order/-1")
-                .then()
-                .statusCode(400)
-                .extract().response();
-        System.out.println(response.asString());
-    }
-
-    @Test(enabled = true, description = "Non-existent Order ID (11)")
-    public void getNonExistentOrderId11() {
-        Response response = given(Method.GET, "/store/order/11")
-                .then()
-                .statusCode(404)
-                .extract().response();
-        System.out.println(response.asString());
-    }
-
-    // DELETE tests
-    @Test(enabled = true, description = "Valid ID, order should be deleted successfully (123)")
-    public void deleteOrder123() {
-        given(Method.DELETE, "/store/order/123")
-                .then()
-                .statusCode(204);
-    }
-
-    @Test(enabled = true, description = "Invalid ID (negative), should return 400 error (-1)")
-    public void deleteInvalidOrderIdNegative1() {
-        Response response = given(Method.DELETE, "/store/order/-1")
-                .then()
-                .statusCode(400)
-                .extract().response();
-        System.out.println(response.asString());
-    }
-
-    @Test(enabled = true, description = "Invalid ID (non-integer string), should return 400 error (abc)")
-    public void deleteInvalidOrderIdNonIntegerString() {
-        Response response = given(Method.DELETE, "/store/order/abc")
-                .then()
-                .statusCode(400)
-                .extract().response();
-        System.out.println(response.asString());
-    }
-
-    @Test(enabled = true, description = "Order not found, should return no content (204) (1)")
-    public void deleteOrderNotFound204() {
-        given(Method.DELETE, "/store/order/1")
-                .then()
-                .statusCode(204);
-    }
-
-    @Test(enabled = true, description = "Order not found, should return 404 error (456)")
-    public void deleteOrderNotFound404() {
-        Response response = given(Method.DELETE, "/store/order/456")
-                .then()
-                .statusCode(404)
-                .extract().response();
-        System.out.println(response.asString());
-    }
-
-    @AfterClass
-    public void teardown() {
-        RestAssured.reset();
     }
 }

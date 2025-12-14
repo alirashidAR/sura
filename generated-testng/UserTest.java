@@ -1,10 +1,8 @@
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
 
 public class UserTest {
 
@@ -13,186 +11,145 @@ public class UserTest {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // POST Tests
+    // Grouped by HTTP method
 
-    @Test(description = "POST /user with valid data")
-    public void postUserValidData() {
-        given()
-                .header("Authorization", "Bearer token")
-                .body("{\"name\":\"John Doe\",\"email\":\"john.doe@example.com\"}")
-                .when()
-                .post("/user")
-                .then()
-                .statusCode(200)
+    // POST tests
+    @Test(groups = {"POST"})
+    public void testValidUserCreation() {
+        // Test case 1: Valid User Creation
+        RequestSpecification request = RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("id", equalTo(1), "name", equalTo("John Doe"), "email", equalTo("john.doe@example.com"));
+                .body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}");
+        Response response = request.post("/user");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 201) {
+            System.out.println("Test case 1: Valid User Creation - passed");
+        } else {
+            System.out.println("Test case 1: Valid User Creation - failed with status code " + statusCode);
+        }
     }
 
-    @Test(description = "POST /user with empty request body")
-    public void postUserEmptyRequestBody() {
-        given()
-                .header("Authorization", "Bearer token")
-                .body("{}")
-                .when()
-                .post("/user")
-                .then()
-                .statusCode(400)
+    @Test(groups = {"POST"})
+    public void testEmptyUserCreation() {
+        // Test case 2: Empty User Creation
+        RequestSpecification request = RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("error", equalTo("Invalid request"));
+                .body("{}");
+        Response response = request.post("/user");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 400) {
+            System.out.println("Test case 2: Empty User Creation - passed");
+        } else {
+            System.out.println("Test case 2: Empty User Creation - failed with status code " + statusCode);
+        }
     }
 
-    @Test(description = "POST /user with missing required fields")
-    public void postUserMissingRequiredFields() {
-        given()
-                .header("Authorization", "Bearer token")
-                .body("{\"email\":\"john.doe@example.com\"}")
-                .when()
-                .post("/user")
-                .then()
-                .statusCode(400)
+    @Test(groups = {"POST"})
+    public void testDuplicateUserCreation() {
+        // Test case 3: Duplicate User Creation
+        RequestSpecification request = RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("error", equalTo("Missing required fields"));
+                .body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}");
+        Response response = request.post("/user");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 409) {
+            System.out.println("Test case 3: Duplicate User Creation - passed");
+        } else {
+            System.out.println("Test case 3: Duplicate User Creation - failed with status code " + statusCode);
+        }
     }
 
-    @Test(description = "POST /user with invalid authorization token")
-    public void postUserInvalidAuthorizationToken() {
-        given()
-                .header("Authorization", "Bearer invalid_token")
-                .body("{\"name\":\"Jane Doe\",\"email\":\"jane.doe@example.com\"}")
-                .when()
-                .post("/user")
-                .then()
-                .statusCode(401);
-    }
-
-    @Test(description = "POST /user with empty name and email fields")
-    public void postUserEmptyNameAndEmailFields() {
-        given()
-                .header("Authorization", "Bearer token")
-                .body("{\"name\":\"\",\"email\":\"\"}")
-                .when()
-                .post("/user")
-                .then()
-                .statusCode(400)
+    // GET tests
+    @Test(groups = {"GET"})
+    public void testGetUser() {
+        RequestSpecification request = RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("error", equalTo("Invalid request"));
+                .pathParam("username", "johnDoe");
+        Response response = request.get("/user/{username}");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 200) {
+            System.out.println("Test case: Get User - passed");
+        } else {
+            System.out.println("Test case: Get User - failed with status code " + statusCode);
+        }
     }
 
-    // PUT Tests
-
-    @Test(description = "PUT /user with valid data")
-    public void putUserValidData() {
-        given()
-                .header("Authorization", "Bearer token")
-                .pathParam("id", 1)
-                .body("{\"name\":\"Jane Doe\",\"email\":\"jane.doe@example.com\"}")
-                .when()
-                .put("/user/{id}")
-                .then()
-                .statusCode(200)
+    @Test(groups = {"GET"})
+    public void testGetUserNotFound() {
+        RequestSpecification request = RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("id", equalTo(1), "name", equalTo("Jane Doe"), "email", equalTo("jane.doe@example.com"));
+                .pathParam("username", "non-existent-user");
+        Response response = request.get("/user/{username}");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 404) {
+            System.out.println("Test case: Get User Not Found - passed");
+        } else {
+            System.out.println("Test case: Get User Not Found - failed with status code " + statusCode);
+        }
     }
 
-    @Test(description = "PUT /user with empty request body")
-    public void putUserEmptyRequestBody() {
-        given()
-                .header("Authorization", "Bearer token")
-                .pathParam("id", 1)
-                .body("{}")
-                .when()
-                .put("/user/{id}")
-                .then()
-                .statusCode(400)
+    // PUT tests
+    @Test(groups = {"PUT"})
+    public void testUpdateUser() {
+        RequestSpecification request = RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("error", equalTo("Invalid request"));
+                .body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}")
+                .pathParam("username", "johnDoe");
+        Response response = request.put("/user/{username}");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 200) {
+            System.out.println("Test case: Update User - passed");
+        } else {
+            System.out.println("Test case: Update User - failed with status code " + statusCode);
+        }
     }
 
-    @Test(description = "PUT /user with missing required fields")
-    public void putUserMissingRequiredFields() {
-        given()
-                .header("Authorization", "Bearer token")
-                .pathParam("id", 1)
-                .body("{\"email\":\"john.doe@example.com\"}")
-                .when()
-                .put("/user/{id}")
-                .then()
-                .statusCode(400)
+    @Test(groups = {"PUT"})
+    public void testUpdateUserNotFound() {
+        RequestSpecification request = RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("error", equalTo("Missing required fields"));
+                .body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}")
+                .pathParam("username", "non-existent-user");
+        Response response = request.put("/user/{username}");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 404) {
+            System.out.println("Test case: Update User Not Found - passed");
+        } else {
+            System.out.println("Test case: Update User Not Found - failed with status code " + statusCode);
+        }
     }
 
-    @Test(description = "PUT /user with invalid authorization token")
-    public void putUserInvalidAuthorizationToken() {
-        given()
-                .header("Authorization", "Bearer invalid_token")
-                .pathParam("id", 1)
-                .body("{\"name\":\"Jane Doe\",\"email\":\"jane.doe@example.com\"}")
-                .when()
-                .put("/user/{id}")
-                .then()
-                .statusCode(401);
-    }
-
-    @Test(description = "PUT /user with empty name and email fields")
-    public void putUserEmptyNameAndEmailFields() {
-        given()
-                .header("Authorization", "Bearer token")
-                .pathParam("id", 1)
-                .body("{\"name\":\"\",\"email\":\"\"}")
-                .when()
-                .put("/user/{id}")
-                .then()
-                .statusCode(400)
+    // DELETE tests
+    @Test(groups = {"DELETE"})
+    public void testDeleteUser() {
+        RequestSpecification request = RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("error", equalTo("Invalid request"));
+                .pathParam("username", "johnDoe");
+        Response response = request.delete("/user/{username}");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 200) {
+            System.out.println("Test case: Delete User - passed");
+        } else {
+            System.out.println("Test case: Delete User - failed with status code " + statusCode);
+        }
     }
 
-    // GET Tests
-
-    @Test(description = "GET /users with valid data")
-    public void getUsersValidData() {
-        given()
-                .header("Authorization", "Bearer token")
-                .when()
-                .get("/user")
-                .then()
-                .statusCode(200)
-                .contentType(ContentType.JSON);
+    @Test(groups = {"DELETE"})
+    public void testDeleteUserNotFound() {
+        RequestSpecification request = RestAssured.given()
+                .contentType(ContentType.JSON)
+                .pathParam("username", "non-existent-user");
+        Response response = request.delete("/user/{username}");
+        int statusCode = response.getStatusCode();
+        if (statusCode == 404) {
+            System.out.println("Test case: Delete User Not Found - passed");
+        } else {
+            System.out.println("Test case: Delete User Not Found - failed with status code " + statusCode);
+        }
     }
 
-    @Test(description = "GET /users with invalid authorization token")
-    public void getUsersInvalidAuthorizationToken() {
-        given()
-                .header("Authorization", "Bearer invalid_token")
-                .when()
-                .get("/user")
-                .then()
-                .statusCode(401);
+    @AfterClass
+    public void cleanup() {
+        // Cleanup code if needed
     }
-
-    // DELETE Tests
-
-    @Test(description = "DELETE /user/{id} with valid id")
-    public void deleteUserValidId() {
-        given()
-                .header("Authorization", "Bearer token")
-                .pathParam("id", 1)
-                .when()
-                .delete("/user/{id}")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "DELETE /user/{id} with invalid id")
-    public void deleteUserInvalidId() {
-        given()
-                .header("Authorization", "Bearer token")
-                .pathParam("id", 999)
-                .when()
-                .delete("/user/{id}")
-                .then()
-                .statusCode(404);
-    }
-
 }

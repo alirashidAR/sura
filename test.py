@@ -1,33 +1,9 @@
 # /D:/test-generation/test.py - corrected + cleaned JSON
-
-import os
 import json
 import time
 import re
 
 import ollama
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-
-
-
-# Load OpenAPI JSON
-with open("openapi.json", "r", encoding="utf-8") as f:
-    openapi = json.load(f)
-
-# Build chunks from paths
-chunks = []
-for path, methods in openapi.get("paths", {}).items():
-    for method, details in methods.items():
-        desc = details.get("description") or ""
-        chunks.append({
-            "method": method.upper(),
-            "path": path,
-            "description": desc,
-            "parameters": details.get("parameters", []),
-            "requestBody": details.get("requestBody", {}),
-            "responses": details.get("responses", {})
-        })
 
 
 # Generate tests for an endpoint; parse JSON if possible
@@ -67,17 +43,40 @@ def generate_tests_for_endpoint(endpoint, model="incept5/llama3.1-claude", max_r
     return None
 
 # Generate tests for all endpoints and save to file
-all_tests = []
-for endpoint in chunks:
-    tests = generate_tests_for_endpoint(endpoint)
-    all_tests.append({
-        "endpoint": endpoint["path"],
-        "method": endpoint["method"],
-        "tests": tests
-    })
+def main(file):
+    # Load OpenAPI JSON
+    with open(file, "r", encoding="utf-8") as f:
+        openapi = json.load(f)
 
-with open("generated_tests.json", "w", encoding="utf-8") as f:
-    json.dump(all_tests, f, indent=2, ensure_ascii=False)
+    # Build chunks from paths
+    chunks = []
+    for path, methods in openapi.get("paths", {}).items():
+        for method, details in methods.items():
+            desc = details.get("description") or ""
+            chunks.append({
+                "method": method.upper(),
+                "path": path,
+                "description": desc,
+                "parameters": details.get("parameters", []),
+                "requestBody": details.get("requestBody", {}),
+                "responses": details.get("responses", {})
+            })
 
-print("Generated tests saved as clean JSON to generated_tests.json")
 
+    all_tests = []
+    for endpoint in chunks:
+        tests = generate_tests_for_endpoint(endpoint)
+        all_tests.append({
+            "endpoint": endpoint["path"],
+            "method": endpoint["method"],
+            "tests": tests
+        })
+
+    with open("generated_tests.json", "w", encoding="utf-8") as f:
+        json.dump(all_tests, f, indent=2, ensure_ascii=False)
+
+    print("Generated tests saved as clean JSON to generated_tests.json")    
+     
+
+if __name__ == "__main__":
+    main("openapi.json")
