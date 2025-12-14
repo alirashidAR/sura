@@ -5,14 +5,11 @@ import json
 import time
 import re
 
-import openai
+import ollama
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Use an environment variable for the API key
-openai.api_key = "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"
-if not openai.api_key:
-    raise RuntimeError("OPENAI_API_KEY environment variable not set")
+
 
 # Load OpenAPI JSON
 with open("openapi.json", "r", encoding="utf-8") as f:
@@ -34,7 +31,7 @@ for path, methods in openapi.get("paths", {}).items():
 
 
 # Generate tests for an endpoint; parse JSON if possible
-def generate_tests_for_endpoint(endpoint, model="gpt-4o", max_retries=2):
+def generate_tests_for_endpoint(endpoint, model="incept5/llama3.1-claude", max_retries=2):
     prompt = (
         "You are an API test case generator. Generate 3-5 detailed test cases "
         "(input, expected output, edge cases) for this OpenAPI endpoint. "
@@ -48,12 +45,11 @@ def generate_tests_for_endpoint(endpoint, model="gpt-4o", max_retries=2):
     )
     for attempt in range(max_retries):
         try:
-            completion = openai.ChatCompletion.create(
+            completion = ollama.chat(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
             )
-            content = completion["choices"][0]["message"]["content"]
+            content = completion["message"]["content"]
 
             # Remove Markdown fences if present
             match = re.search(r"```json\s*(.*?)\s*```", content, re.DOTALL)
@@ -84,3 +80,4 @@ with open("generated_tests.json", "w", encoding="utf-8") as f:
     json.dump(all_tests, f, indent=2, ensure_ascii=False)
 
 print("Generated tests saved as clean JSON to generated_tests.json")
+

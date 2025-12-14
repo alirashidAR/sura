@@ -1,3 +1,5 @@
+import ollama
+import json
 def generate_tests_for_endpoint(endpoint):
     prompt = f"""
     You are an API test case generator. Generate 3-5 detailed test cases (input, expected output, edge cases)
@@ -12,9 +14,15 @@ def generate_tests_for_endpoint(endpoint):
 
     Return the output as a JSON list of test cases.
     """
-    completion = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}]
+    model = "incept5/llama3.1-claude"
+    completion = ollama.chat(
+        model=model,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
     )
     return completion.choices[0].message.content
 
