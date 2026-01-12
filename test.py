@@ -2,45 +2,90 @@
 import json
 import time
 import re
-
+from rag.qdrant_retrieve import retrieve_patterns
 import ollama
+from cache.test_cache import get_cached, store_cached
+
+def endpoint_signature(endpoint):
+    return f"{endpoint['method']}:{endpoint['path']}:{bool(endpoint['requestBody'])}"
 
 
-# Generate tests for an endpoint; parse JSON if possible
 def generate_tests_for_endpoint(endpoint, model="incept5/llama3.1-claude", max_retries=2):
-    prompt = (
-        "You are an API test case generator. Generate 3-5 detailed test cases "
-        "(input, expected output, edge cases) for this OpenAPI endpoint. "
-        "Return the output as a JSON array of test case objects.\n\n"
-        f"Method: {endpoint['method']}\n"
-        f"Path: {endpoint['path']}\n"
-        f"Description: {endpoint['description']}\n"
-        f"Parameters: {json.dumps(endpoint['parameters'])}\n"
-        f"RequestBody: {json.dumps(endpoint['requestBody'])}\n"
-        f"Responses: {json.dumps(endpoint['responses'])}\n"
+    patterns = retrieve_patterns(endpoint)
+    if not patterns:
+        pattern_text = "- No specific patterns found. Follow standard API testing best practices."
+
+    else:
+        pattern_text = "\n".join(
+            [f"- {p.get('pattern_text', '')}" for p in patterns]
+        )
+
+    pattern_names = list(
+        {p.get("pattern_type", "General") for p in patterns}
     )
+
+    prompt = f"""
+You are an expert API test case generator.
+
+REFERENCE TESTING PATTERNS:
+{pattern_text}
+
+TASK:
+Generate 5-6 API test cases as a JSON ARRAY.
+
+Each test case MUST include:
+- name
+- request (path_params, query_params, headers, body)
+- expected_status
+- edge_case_reason
+
+ENDPOINT DETAILS:
+Method: {endpoint['method']}
+Path: {endpoint['path']}
+Description: {endpoint['description']}
+Parameters: {json.dumps(endpoint['parameters'])}
+RequestBody: {json.dumps(endpoint['requestBody'])}
+Responses: {json.dumps(endpoint['responses'])}
+
+IMPORTANT:
+- Follow the reference patterns strictly
+- Return ONLY valid JSON
+- No markdown
+"""
+
     for attempt in range(max_retries):
         try:
+            signature = endpoint_signature(endpoint)
+            cached = get_cached(signature)
+            if cached:
+                print(f"[FAST-PATH] Using cached test cases for {signature}")
+                return cached
             completion = ollama.chat(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
             )
+
             content = completion["message"]["content"]
 
-            # Remove Markdown fences if present
             match = re.search(r"```json\s*(.*?)\s*```", content, re.DOTALL)
             if match:
                 content = match.group(1)
 
-            try:
-                return json.loads(content)
-            except json.JSONDecodeError:
-                return content  # fallback
-        except Exception:
+            result =  {
+                "tests": json.loads(content),
+                "patterns_used": pattern_names
+            }
+            store_cached(signature, result)
+            return result
+        except Exception as e:
             if attempt + 1 == max_retries:
-                raise
+                print(f"Failed for {endpoint['path']}: {e}")
+                return {
+                    "tests": [],
+                    "patterns_used": pattern_names
+                }
+
             time.sleep(1)
-    return None
 
 # Generate tests for all endpoints and save to file
 def main(file):
@@ -64,12 +109,15 @@ def main(file):
 
 
     all_tests = []
+    #path wise chuncking
     for endpoint in chunks:
         tests = generate_tests_for_endpoint(endpoint)
+
         all_tests.append({
             "endpoint": endpoint["path"],
             "method": endpoint["method"],
-            "tests": tests
+            "patterns_used": tests["patterns_used"],
+            "tests": tests["tests"]
         })
 
     with open("generated_tests.json", "w", encoding="utf-8") as f:

@@ -1,190 +1,328 @@
-import io.restassured.http.Method;
+import io.restassured.http.ContentType;
 import io.restassured.path.json.JsonPath;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import static io.restassured.RestAssured.baseURI;
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static java.time.format.DateTimeFormatter.ofPattern;
-import static java.time.LocalDateTime.now;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue);
 
-public class UserLoginTest {
+public class LoginTest extends TestBase {
 
     @BeforeClass
     public void setup() {
-        RestAssured.baseURI = "https://api.example.com";
+        baseURI = "https://api.example.com";
     }
 
-    // GET Tests
-
-    @Test(description = "Valid Login")
-    public void testValidLogin() {
-        given(Method.GET, "/user/login?username=valid_user&password=correct_password").
-                then().statusCode(200).
-                body("X-Expires-After", equalTo(now().format(ofPattern("yyyy-MM-dd HH:mm:ss")))).
-                body("X-Rate-Limit", equalTo("100")).
-                body("token", equalTo("$.schema"));
+    // GROUP 1 - GET TESTS
+    /**
+     * Valid login test case for GET method
+     */
+    @Test(description = "Valid login test case")
+    public void validLoginGetTest() {
+        given()
+                .pathParam("username", "johnDoe")
+                .pathParam("password", "mySecretPassword")
+                .when()
+                .get("/user/login?username={username}&password={password}")
+                .then()
+                .statusCode(200)
+                .body("X-Expires-After", equalTo("2024-05-01T12:00:00Z"))
+                .body("X-Rate-Limit", equalTo(100))
+                .body("token", notNullValue());
     }
 
-    @Test(description = "Empty Username")
-    public void testEmptyUsername() {
-        given(Method.GET, "/user/login?username=&password=correct_password").
-                then().statusCode(400);
+    /**
+     * Invalid password test case for GET method
+     */
+    @Test(description = "Invalid password test case")
+    public void invalidPasswordGetTest() {
+        given()
+                .pathParam("username", "johnDoe")
+                .pathParam("password", "wrongPassword")
+                .when()
+                .get("/user/login?username={username}&password={password}")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Empty Password")
-    public void testEmptyPassword() {
-        given(Method.GET, "/user/login?username=valid_user&password=").
-                then().statusCode(400);
+    /**
+     * Empty password test case for GET method
+     */
+    @Test(description = "Empty password test case")
+    public void emptyPasswordGetTest() {
+        given()
+                .pathParam("username", "johnDoe")
+                .pathParam("password", "")
+                .when()
+                .get("/user/login?username={username}&password={password}")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Non-Alphanumeric Username")
-    public void testNonAlphanumericUsername() {
-        given(Method.GET, "/user/login?username=@#$%^&*()&password=correct_password").
-                then().statusCode(400);
+    /**
+     * Empty username test case for GET method
+     */
+    @Test(description = "Empty username test case")
+    public void emptyUsernameGetTest() {
+        given()
+                .pathParam("username", "")
+                .pathParam("password", "mySecretPassword")
+                .when()
+                .get("/user/login?username={username}&password={password}")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    // POST Tests
-
-    @Test(description = "Valid Login with Body")
-    public void testValidLoginWithBody() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"valid_user\",\"password\":\"correct_password\"}").
-                asJson();
-        String token = response.getString("token");
-        assertThat(token, equalTo("$.schema"));
+    /**
+     * Non-string username test case for GET method
+     */
+    @Test(description = "Non-string username test case")
+    public void nonStringUsernameGetTest() {
+        given()
+                .pathParam("username", 12345)
+                .pathParam("password", "mySecretPassword")
+                .when()
+                .get("/user/login?username={username}&password={password}")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Invalid Password with Body")
-    public void testInvalidPasswordWithBody() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"valid_user\",\"password\":\"incorrect_password\"}").
-                asJson();
-        String token = response.getString("token");
-        assertThat(token, equalTo(""));
+    // GROUP 2 - POST TESTS
+    /**
+     * Valid login test case for POST method
+     */
+    @Test(description = "Valid login test case")
+    public void validLoginPostTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"mySecretPassword\"}")
+                .when()
+                .post("/user/login")
+                .then()
+                .statusCode(200)
+                .body("X-Expires-After", equalTo("2024-05-01T12:00:00Z"))
+                .body("X-Rate-Limit", equalTo(100))
+                .body("token", notNullValue());
     }
 
-    @Test(description = "Empty Username with Body")
-    public void testEmptyUsernameWithBody() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"\",\"password\":\"correct_password\"}").
-                asJson();
-        String token = response.getString("token");
-        assertThat(token, equalTo(""));
+    /**
+     * Invalid password test case for POST method
+     */
+    @Test(description = "Invalid password test case")
+    public void invalidPasswordPostTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"wrongPassword\"}")
+                .when()
+                .post("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Empty Password with Body")
-    public void testEmptyPasswordWithBody() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"valid_user\",\"password\":\"\"}").
-                asJson();
-        String token = response.getString("token");
-        assertThat(token, equalTo(""));
+    /**
+     * Empty password test case for POST method
+     */
+    @Test(description = "Empty password test case")
+    public void emptyPasswordPostTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"\"}")
+                .when()
+                .post("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Non-Alphanumeric Username with Body")
-    public void testNonAlphanumericUsernameWithBody() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"@#$%^&*()\"," +
-                                "\"password\":\"correct_password\"}").
-                asJson();
-        String token = response.getString("token");
-        assertThat(token, equalTo(""));
+    /**
+     * Empty username test case for POST method
+     */
+    @Test(description = "Empty username test case")
+    public void emptyUsernamePostTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"\",\"password\":\"mySecretPassword\"}")
+                .when()
+                .post("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    // PUT Tests
-
-    @Test(description = "Valid Login with Path Param")
-    public void testValidLoginWithPathParam() {
-        given(Method.PUT, "/user/login/{username}/{password}",
-                        "valid_user", "correct_password").
-                then().statusCode(200);
+    /**
+     * Non-string username test case for POST method
+     */
+    @Test(description = "Non-string username test case")
+    public void nonStringUsernamePostTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":12345,\"password\":\"mySecretPassword\"}")
+                .when()
+                .post("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Invalid Password with Path Param")
-    public void testInvalidPasswordWithPathParam() {
-        given(Method.PUT, "/user/login/{username}/{password}",
-                        "valid_user", "incorrect_password").
-                then().statusCode(400);
+    // GROUP 3 - PUT TESTS
+    /**
+     * Valid login test case for PUT method
+     */
+    @Test(description = "Valid login test case")
+    public void validLoginPutTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"mySecretPassword\"}")
+                .when()
+                .put("/user/login")
+                .then()
+                .statusCode(200)
+                .body("X-Expires-After", equalTo("2024-05-01T12:00:00Z"))
+                .body("X-Rate-Limit", equalTo(100))
+                .body("token", notNullValue());
     }
 
-    @Test(description = "Empty Username with Path Param")
-    public void testEmptyUsernameWithPathParam() {
-        given(Method.PUT, "/user/login/{username}/{password}",
-                        "", "correct_password").
-                then().statusCode(400);
+    /**
+     * Invalid password test case for PUT method
+     */
+    @Test(description = "Invalid password test case")
+    public void invalidPasswordPutTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"wrongPassword\"}")
+                .when()
+                .put("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Empty Password with Path Param")
-    public void testEmptyPasswordWithPathParam() {
-        given(Method.PUT, "/user/login/{username}/{password}",
-                        "valid_user", "").
-                then().statusCode(400);
+    /**
+     * Empty password test case for PUT method
+     */
+    @Test(description = "Empty password test case")
+    public void emptyPasswordPutTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"\"}")
+                .when()
+                .put("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Non-Alphanumeric Username with Path Param")
-    public void testNonAlphanumericUsernameWithPathParam() {
-        given(Method.PUT, "/user/login/{username}/{password}",
-                        "@#$%^&*()", "correct_password").
-                then().statusCode(400);
+    /**
+     * Empty username test case for PUT method
+     */
+    @Test(description = "Empty username test case")
+    public void emptyUsernamePutTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"\",\"password\":\"mySecretPassword\"}")
+                .when()
+                .put("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    // DELETE Tests
-
-    @Test(description = "Valid Login with Body and Delete")
-    public void testValidLoginWithBodyAndDelete() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"valid_user\",\"password\":\"correct_password\"}").
-                asJson();
-        String token = response.getString("token");
-        given(Method.DELETE, "/user/{token}",
-                        token).
-                then().statusCode(200);
+    /**
+     * Non-string username test case for PUT method
+     */
+    @Test(description = "Non-string username test case")
+    public void nonStringUsernamePutTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":12345,\"password\":\"mySecretPassword\"}")
+                .when()
+                .put("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Invalid Password with Body and Delete")
-    public void testInvalidPasswordWithBodyAndDelete() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"valid_user\",\"password\":\"incorrect_password\"}").
-                asJson();
-        String token = response.getString("token");
-        given(Method.DELETE, "/user/{token}",
-                        token).
-                then().statusCode(400);
+    // GROUP 4 - DELETE TESTS
+    /**
+     * Valid login test case for DELETE method
+     */
+    @Test(description = "Valid login test case")
+    public void validLoginDeleteTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"mySecretPassword\"}")
+                .when()
+                .delete("/user/login")
+                .then()
+                .statusCode(200)
+                .body("X-Expires-After", equalTo("2024-05-01T12:00:00Z"))
+                .body("X-Rate-Limit", equalTo(100))
+                .body("token", notNullValue());
     }
 
-    @Test(description = "Empty Username with Body and Delete")
-    public void testEmptyUsernameWithBodyAndDelete() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"\",\"password\":\"correct_password\"}").
-                asJson();
-        String token = response.getString("token");
-        given(Method.DELETE, "/user/{token}",
-                        token).
-                then().statusCode(400);
+    /**
+     * Invalid password test case for DELETE method
+     */
+    @Test(description = "Invalid password test case")
+    public void invalidPasswordDeleteTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"wrongPassword\"}")
+                .when()
+                .delete("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Empty Password with Body and Delete")
-    public void testEmptyPasswordWithBodyAndDelete() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"valid_user\",\"password\":\"\"}").
-                asJson();
-        String token = response.getString("token");
-        given(Method.DELETE, "/user/{token}",
-                        token).
-                then().statusCode(400);
+    /**
+     * Empty password test case for DELETE method
+     */
+    @Test(description = "Empty password test case")
+    public void emptyPasswordDeleteTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"johnDoe\",\"password\":\"\"}")
+                .when()
+                .delete("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
 
-    @Test(description = "Non-Alphanumeric Username with Body and Delete")
-    public void testNonAlphanumericUsernameWithBodyAndDelete() {
-        JsonPath response = given(Method.POST, "/user/login",
-                        "{\"username\":\"@#$%^&*()\"," +
-                                "\"password\":\"correct_password\"}").
-                asJson();
-        String token = response.getString("token");
-        given(Method.DELETE, "/user/{token}",
-                        token).
-                then().statusCode(400);
+    /**
+     * Empty username test case for DELETE method
+     */
+    @Test(description = "Empty username test case")
+    public void emptyUsernameDeleteTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":\"\",\"password\":\"mySecretPassword\"}")
+                .when()
+                .delete("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
     }
-}
+
+    /**
+     * Non-string username test case for DELETE method
+     */
+    @Test(description = "Non-string username test case")
+    public void nonStringUsernameDeleteTest() {
+        given()
+                .header("Content-Type", ContentType.JSON.toString())
+                .body("{\"username\":12345,\"password\":\"mySecretPassword\"}")
+                .when()
+                .delete("/user/login")
+                .then()
+                .statusCode(400)
+                .body(equalTo(null));
+    }

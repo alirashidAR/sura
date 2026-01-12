@@ -1,89 +1,141 @@
-import io.restassured.RestAssured;
-import org.testng.annotations.AfterClass;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import static io.restassured.RestAssured.baseURI;
+import static io.restassured.RestAssured.given;
 
 public class CreateUserArrayTest {
 
     @BeforeClass
-    public void setup() {
-        RestAssured.baseURI = "https://api.example.com";
+    public void setUp() {
+        baseURI = "https://api.example.com";
     }
 
-    /**
-     * Group test methods by HTTP method using comments
-     */
-    
     // POST tests
-    @Test(priority = 1)
-    public void createUsersValidData() {
-        // Test case: Create multiple users with valid data
-        RestAssured.given()
-                .when().post("/user/createWithArray")
-                .then().statusCode(201)
-                .body("users[0].name", hasItem("John Doe"))
-                .body("users[0].email", hasItem("john.doe@example.com"))
-                .body("users[1].name", hasItem("Jane Doe"))
-                .body("users[1].email", hasItem("jane.doe@example.com"));
+    @Test
+    public void createUserArrayWithValidData() {
+        String[] body = new String[] {
+                "{\"name\":\"John Doe\",\"email\":\"john@example.com\"}",
+                "{\"name\":\"Jane Doe\",\"email\":\"jane@example.com\"}"
+        };
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(body)
+                .when()
+                .post("/user/createWithArray");
+
+        response.then().statusCode(201);
     }
 
-    @Test(priority = 2)
-    public void createUsersInvalidData() {
-        // Test case: Create multiple users with invalid data
-        RestAssured.given()
-                .when().post("/user/createWithArray")
-                .then().statusCode(400)
-                .body("errors[0].message", hasItem("Name is required"))
-                .body("errors[1].message", hasItem("Email is required"));
+    @Test
+    public void createUserArrayWithInvalidEmails() {
+        String[] body = new String[] {
+                "{\"name\":\"John Doe\",\"email\":\"\"}",
+                "{\"name\":\"\",\"email\":\"jane@example.com\"}"
+        };
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(body)
+                .when()
+                .post("/user/createWithArray");
+
+        response.then().statusCode(201);
     }
 
-    @Test(priority = 3)
-    public void emptyInputArray() {
-        // Test case: Empty input array
-        RestAssured.given()
-                .when().post("/user/createWithArray")
-                .then().statusCode(204);
+    @Test
+    public void createUserArrayWithTwoEmptyUsers() {
+        String[] body = new String[] {
+                "{\"name\":\"\",\"email\":\"\"}",
+                "{\"name\":\"\",\"email\":\"\"}"
+        };
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(body)
+                .when()
+                .post("/user/createWithArray");
+
+        response.then().statusCode(201);
     }
 
-    // GET tests
-    @Test(priority = 4)
-    public void getCreatedUsers() {
-        // Test case: Get created users
-        RestAssured.given()
-                .when().get("/users")
-                .then().statusCode(200)
-                .body("users[0].name", hasItem("John Doe"))
-                .body("users[1].email", hasItem("jane.doe@example.com"));
+    @Test
+    public void createUserArrayWithMultipleUsers() {
+        String[] body = new String[] {
+                "{\"name\":\"John Doe\",\"email\":\"john@example.com\"}",
+                "{\"name\":\"Jane Doe\",\"email\":\"jane@example.com\"}",
+                "{\"name\":\"Bob Smith\",\"email\":\"bob@example.com\"}"
+        };
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(body)
+                .when()
+                .post("/user/createWithArray");
+
+        response.then().statusCode(201);
     }
 
-    // PUT tests
-    @Test(priority = 5)
-    public void updateExistingUser() {
-        // Test case: Update existing user
-        RestAssured.given()
-                .when().put("/user/{id}", 1, "{name=John Doe Updated}")
-                .then().statusCode(200);
-    }
+    @Test
+    public void createUserArrayWithSingleEmptyUser() {
+        String[] body = new String[] {
+                "{\"name\":\"\",\"email\":\"\"}"
+        };
 
-    @Test(priority = 6)
-    public void updateUserInvalidData() {
-        // Test case: Update existing user with invalid data
-        RestAssured.given()
-                .when().put("/user/{id}", 1, "{name=}")
-                .then().statusCode(400);
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(body)
+                .when()
+                .post("/user/createWithArray");
+
+        response.then().statusCode(201);
     }
 
     // DELETE tests
-    @Test(priority = 7)
-    public void deleteUser() {
-        // Test case: Delete existing user
-        RestAssured.given()
-                .when().delete("/user/{id}", 1)
-                .then().statusCode(204);
+    @Test
+    public void deleteUserArray() {
+        String[] body = new String[] {
+                "{\"id\":1,\"name\":\"John Doe\",\"email\":\"john@example.com\"}",
+                "{\"id\":2,\"name\":\"Jane Doe\",\"email\":\"jane@example.com\"}"
+        };
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(body)
+                .when()
+                .delete("/user/createWithArray");
+
+        response.then().statusCode(200);
     }
-    
-    @AfterClass
-    public void tearDown() {
-        
+
+    // PUT tests
+    @Test
+    public void updateUserArray() {
+        String[] body = new String[] {
+                "{\"id\":1,\"name\":\"John Doe\",\"email\":\"john@example.com\"}",
+                "{\"id\":2,\"name\":\"Jane Doe\",\"email\":\"jane@example.com\"}"
+        };
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(body)
+                .when()
+                .put("/user/createWithArray");
+
+        response.then().statusCode(200);
+    }
+
+    // GET tests
+    @Test
+    public void getUserArray() {
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .when()
+                .get("/user/createWithArray");
+
+        response.then().statusCode(200);
     }
 }

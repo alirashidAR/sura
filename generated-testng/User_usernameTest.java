@@ -1,213 +1,176 @@
 import io.restassured.RestAssured;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import static io.restassured.http.ContentType.JSON;
-import static org.hamcrest.Matchers.isA, equalTo;
-
-public class UserAPITests {
-
-    private String baseUri = "https://api.example.com";
+public class UserApiTest {
 
     @BeforeClass
-    public void setup() {
-        RestAssured.baseURI = baseUri;
+    public void setUp() {
+        RestAssured.baseURI = "https://api.example.com";
     }
 
-    // GET tests
-    @Test(description = "/user/{username} (happy path)")
-    public void testGetUserHappyPath() {
-        given()
-                .pathParam("username", "user1")
+    @Test(description = "Update user profile successfully")
+    public void putUserByUsernameUsername123ValidProfileUpdate() {
+        // Given
+        String username = "username123";
+        String name = "John Doe";
+        String email = "johndoe@example.com";
+
+        // When
+        int responseCode = RestAssured.given()
+                .header("Authorization", "Bearer token")
+                .body("{\"name\":\"" + name + "\",\"email\":\"" + email + "\"}")
                 .when()
-                .get("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(200);
+                .put("/user/{username}", username)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == 200;
     }
 
-    @Test(description = "/user/ (empty username)")
-    public void testGetUserEmptyUsername() {
-        given()
-                .pathParam("username", "")
+    @Test(description = "User not found when updating profile")
+    public void putUserByUsernameInvalidUsernameUserNotFound() {
+        // Given
+        String invalidUsername = "invalid_username";
+
+        // When
+        int responseCode = RestAssured.given()
+                .header("Authorization", "Bearer token")
+                .body("{\"name\":\"John Doe\",\"email\":\"johndoe@example.com\"}")
                 .when()
-                .get("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(400);
+                .put("/user/{username}", invalidUsername)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == 404;
     }
 
-    @Test(description = "/user/user!@# (username with special characters)")
-    public void testGetUserSpecialCharacters() {
-        given()
-                .pathParam("username", "user!@#")
+    @Test(description = "Invalid user supplied when updating profile")
+    public void putUserByUsernameUsername123InvalidUserObject() {
+        // Given
+        String username = "username123";
+
+        // When
+        int responseCode = RestAssured.given()
+                .header("Authorization", "Bearer token")
+                .body("{\"name\":null,\"email\":\"johndoe@example.com\"}")
                 .when()
-                .get("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(200);
+                .put("/user/{username}", username)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == 400;
     }
 
-    @Test(description = "/user/non-existent-user (not found)")
-    public void testGetUserNotFound() {
-        given()
-                .pathParam("username", "non-existent-user")
+    @Test(description = "Unauthorized when updating profile without authentication")
+    public void putUserByUsernameUsername123NoAuthentication() {
+        // Given
+        String username = "username123";
+
+        // When
+        int responseCode = RestAssured.given()
+                .body("{\"name\":\"John Doe\",\"email\":\"johndoe@example.com\"}")
                 .when()
-                .get("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(404);
+                .put("/user/{username}", username)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == 401;
     }
 
-    @Test(description = "/user/null-username (400 error)")
-    public void testGetUserNullUsername() {
-        given()
-                .pathParam("username", null)
+    @Test(description = "Unauthorized when updating profile with invalid authentication token")
+    public void putUserByUsernameUsername123InvalidAuthenticationToken() {
+        // Given
+        String username = "username123";
+
+        // When
+        int responseCode = RestAssured.given()
+                .header("Authorization", "Bearer invalid_token")
+                .body("{\"name\":\"John Doe\",\"email\":\"johndoe@example.com\"}")
                 .when()
-                .get("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(400);
+                .put("/user/{username}", username)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == 401;
     }
 
-    @Test(description = "/user/user1 (caching test)")
-    public void testGetUserCaching() {
-        given()
-                .pathParam("username", "user1")
-                .header("Cache-Control", "max-age=3600")
+    @Test(description = "The request should be processed successfully and return a no-content response")
+    public void deleteUserByUsernameJohnDoeValidDeleteRequestByLoggedInUser() {
+        // Given
+        String username = "johnDoe";
+
+        // When
+        int responseCode = RestAssured.given()
+                .header("Authorization", "Bearer validToken")
                 .when()
-                .get("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(200);
+                .delete("/user/{username}", username)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == 204;
     }
 
-    @Test(description = "/user/user1 (concurrent requests)")
-    public void testGetUserConcurrentRequests() {
-        given()
-                .pathParam("username", "user1")
-                .header("X-Forwarded-For", "192.168.1.100")
+    @Test(description = "The request should return a bad request response due to an invalid username")
+    public void deleteUserByUsernameInvalidUsernameBadRequest() {
+        // Given
+        String invalidUsername = "invalidUsername";
+
+        // When
+        int responseCode = RestAssured.given()
+                .header("Authorization", "Bearer invalidToken")
                 .when()
-                .get("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(200);
+                .delete("/user/{username}", invalidUsername)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == 400;
     }
 
-    // PUT tests
-    @Test(description = "Valid Update Request")
-    public void testPutUserValidUpdate() {
-        given()
-                .pathParam("username", "johnDoe")
-                .body("{\"email\":\"john.doe@example.com\",\"phone\":"+ "\"+1-555-555-5555\"}")
+    @Test(description = "The request should return a not found response due to an unknown user")
+    public void deleteUserByUsernameJohnDoeUserNotFound() {
+        // Given
+        String username = "johnDoe";
+
+        // When
+        int responseCode = RestAssured.given()
+                .header("Authorization", "Bearer validToken")
                 .when()
-                .put("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(200);
+                .delete("/user/{username}", username)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == 404;
     }
 
-    @Test(description = "Invalid Update Request - Missing Body")
-    public void testPutUserMissingBody() {
-        given()
-                .pathParam("username", "johnDoe")
+    @Test(description = "The request should not be processed due to missing authentication")
+    public void deleteUserByUsernameJohnDoeNoAuthentication() {
+        // Given
+        String username = "johnDoe";
+
+        // When
+        int responseCode = RestAssured.given()
                 .when()
-                .put("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(400);
+                .delete("/user/{username}", username)
+                .getStatusCode();
+
+        // Then
+        assert responseCode == null;
     }
 
-    @Test(description = "Invalid Update Request - Invalid User Object")
-    public void testPutUserInvalidObject() {
-        given()
-                .pathParam("username", "johnDoe")
-                .body("{\"email\":null,\"phone\":\"invalid phone number\"}")
-                .when()
-                .put("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(400);
-    }
+    @Test(description = "The request should not be processed due to a missing or empty username parameter")
+    public void deleteUserByUsernameEmptyUsernameMissingUsername() {
+        // Given
+        String username = "";
 
-    @Test(description = "UnAuthorized Update Request - Different Username")
-    public void testPutUserDifferentUsername() {
-        given()
-                .pathParam("username", "janeDoe")
-                .body("{\"email\":\"john.doe@example.com\",\"phone\":"+ "\"+1-555-555-5555\"}")
+        // When
+        int responseCode = RestAssured.given()
+                .header("Authorization", "Bearer validToken")
                 .when()
-                .put("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(401);
-    }
+                .delete("/user/{username}", username)
+                .getStatusCode();
 
-    @Test(description = "UnAuthorized Update Request - No Authorization Header")
-    public void testPutUserNoAuthHeader() {
-        given()
-                .pathParam("username", "johnDoe")
-                .body("{\"email\":\"john.doe@example.com\",\"phone\":"+ "\"+1-555-555-5555\"}")
-                .when()
-                .put("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(401);
-    }
-
-    // DELETE tests
-    @Test(description = "Valid Delete Request")
-    public void testDeleteUserHappyPath() {
-        given()
-                .pathParam("username", "johnDoe")
-                .when()
-                .delete("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(204);
-    }
-
-    @Test(description = "Invalid Username")
-    public void testDeleteUserInvalidUsername() {
-        given()
-                .pathParam("username", "invalidUsername")
-                .when()
-                .delete("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(400);
-    }
-
-    @Test(description = "User Not Found")
-    public void testDeleteUserNotFound() {
-        given()
-                .pathParam("username", "nonExistentUser")
-                .when()
-                .delete("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(404);
-    }
-
-    @Test(description = "Delete Request with Empty Username")
-    public void testDeleteUserEmptyUsername() {
-        given()
-                .pathParam("username", "")
-                .when()
-                .delete("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(400);
-    }
-
-    @Test(description = "Delete Request with Null Username")
-    public void testDeleteUserNullUsername() {
-        given()
-                .pathParam("username", null)
-                .when()
-                .delete("/user/{username}")
-                .then()
-                .assertThat()
-                .statusCode(400);
+        // Then
+        assert responseCode == null;
     }
 }

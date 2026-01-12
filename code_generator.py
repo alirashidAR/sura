@@ -55,7 +55,8 @@ def group_by_path(all_tests):
 
         grouped[endpoint].append({
             "method": method,
-            "tests": tests
+            "tests": tests,
+            "patterns_used": item.get("patterns_used", [])
         })
 
     return grouped
@@ -73,43 +74,48 @@ def generate_testNg_code(path, method_blocks, baseUrl):
     """
 
     prompt = f"""
-    You are a senior Java QA Automation Engineer.
+You are a senior Java QA Automation Engineer.
 
-    TASK:
-    Generate ONE complete and compilable Java TestNG test class
-    for the API path below.
+TASK:
+Generate ONE complete and compilable Java TestNG test class
+for the API path below.
 
-    IMPORTANT RULES:
-    - ONE Java class per PATH
-    - Include ALL HTTP METHODS (GET, POST, PUT, DELETE) in SAME class
-    - One @Test method per test case
-    - Use Java 11+
-    - Use TestNG
-    - Use RestAssured
-    - Use @BeforeClass for setup
-    - Validate HTTP status codes at minimum
-    - Handle path params, query params, headers, body, multipart
-    - Follow Java naming conventions
-    - DO NOT include explanations or markdown
-    - OUTPUT ONLY JAVA CODE
-    - DO NOT RETURN MARKDOWN FENCES
-    - DO NOT RETURN ANYTHING OTHER THAN THE JAVA CODE
-    - IF YOU WANT TO GIVE NOTE REMARKS, RETURN THEM AS JAVA COMMENTS IN THE CODE
+IMPORTANT RULES (MUST FOLLOW STRICTLY):
+- Generate ONLY ONE Java class per API PATH
+- Include ALL HTTP METHODS (GET, POST, PUT, DELETE) in the SAME class
+- If MORE THAN ONE test case exists for the SAME HTTP METHOD:
+  - You MUST use TestNG @DataProvider
+  - You MUST NOT create multiple @Test methods for the same HTTP method
+  - You MUST reuse the same test logic with different input data
+- Use @Test(dataProvider = "...") when applicable
+- Use DataProvider to cover positive, negative, and edge cases
+- Use Java 11+
+- Use TestNG
+- Use RestAssured
+- Use @BeforeClass for setup
+- Validate HTTP status codes at minimum
+- Correctly handle path params, query params, headers, request body, and multipart if present
+- Follow Java naming conventions
+- DO NOT include explanations or markdown
+- OUTPUT ONLY VALID JAVA CODE
+- DO NOT RETURN ANYTHING OTHER THAN THE JAVA CODE
+- If needed, add remarks ONLY as Java comments inside the code
+- Add comments above test methods explaining which edge case is covered
 
-    BASE URL:
-    {baseUrl}
+BASE URL:
+{baseUrl}
 
-    API PATH:
-    {path}
+API PATH:
+{path}
 
-    METHODS AND TEST CASES (JSON):
-    {json.dumps(method_blocks, indent=2)}
+METHODS AND TEST CASES (JSON INPUT):
+{json.dumps(method_blocks, indent=2)}
 
-    IMPLEMENTATION NOTES:
-    - Use RestAssured.baseURI
-    - Use pathParam for {{variables}}
-    - Group test methods by HTTP method using comments
-    """
+IMPLEMENTATION NOTES:
+- Use RestAssured.baseURI for setup
+- Use pathParam() for {{pathVariables}}
+- Group test methods by HTTP method using Java comments
+"""
 
     response = ollama.chat(
         model="incept5/llama3.1-claude",

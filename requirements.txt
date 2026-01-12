@@ -5,3 +5,5 @@ numpy
 fastapi
 uvicorn
 python-multipart
+qdrant-client 
+pymongo

@@ -1,96 +1,74 @@
 import io.restassured.RestAssured;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 public class PetImageUploadTest {
+
+    private String petId = "1";
 
     @BeforeClass
     public void setup() {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // POST /pet/{petId}/uploadImage
+    // Happy Path Test Case - Valid Pet ID and No File
+    @Test(description = "Happy Path Test Case - Valid Pet ID and No File")
+    public void testHappyPath_NoFile() {
+        given()
+                .pathParam("petId", petId)
+                .when()
+                .post("/pet/{petId}/uploadImage")
+                .then()
+                .statusCode(200);
+    }
 
-    @Test(description = "POST /pet/{petId}/uploadImage with valid file")
-    public void postValidFileUploadTest() {
-        RestAssured.given()
+    // Happy Path Test Case - Valid Pet ID and File
+    @Test(description = "Happy Path Test Case - Valid Pet ID and File")
+    public void testHappyPath_File() {
+        given()
+                .pathParam("petId", petId)
                 .header("Content-Type", "multipart/form-data")
-                .formParam("file", "/path/to/image.jpg")
+                .body("{\"file\":\"image.jpg\"}")
                 .when()
-                .post("/pet/1/uploadImage")
+                .post("/pet/{petId}/uploadImage")
                 .then()
-                .statusCode(200)
-                .body("code", 200, "type", "unknown", "message", "pet image uploaded successfully");
+                .statusCode(200);
     }
 
-    @Test(description = "POST /pet/{petId}/uploadImage with invalid pet ID")
-    public void postInvalidPetIdFileUploadTest() {
-        RestAssured.given()
-                .header("Content-Type", "multipart/form-data")
-                .formParam("file", "/path/to/image.jpg")
+    // Edge Case Test Case - Invalid File
+    @Test(description = "Edge Case Test Case - Invalid File", expectedExceptions = AssertionError.class)
+    public void testEdgeCase_InvalidFile() {
+        given()
+                .pathParam("petId", petId)
                 .when()
-                .post("/pet/-1/uploadImage")
+                .post("/pet/{petId}/uploadImage")
                 .then()
-                .statusCode(400)
-                .body("code", 400, "type", "unknown", "message", "Invalid pet ID");
+                .statusCode(400);
     }
 
-    @Test(description = "POST /pet/{petId}/uploadImage with empty file name")
-    public void postEmptyFileNameFileUploadTest() {
-        RestAssured.given()
-                .header("Content-Type", "multipart/form-data")
-                .formParam("file", "")
+    // Edge Case Test Case - Invalid Pet ID
+    @Test(description = "Edge Case Test Case - Invalid Pet ID", expectedExceptions = AssertionError.class)
+    public void testEdgeCase_InvalidPetID() {
+        given()
+                .pathParam("petId", null)
                 .when()
-                .post("/pet/1/uploadImage")
+                .post("/pet/{petId}/uploadImage")
                 .then()
-                .statusCode(400)
-                .body("code", 400, "type", "unknown", "message", "File name is empty");
+                .statusCode(404);
     }
 
-    @Test(description = "POST /pet/{petId}/uploadImage with additional metadata")
-    public void postAdditionalMetadataFileUploadTest() {
-        RestAssured.given()
-                .header("Content-Type", "multipart/form-data")
-                .formParam("additionalMetadata", "some metadata")
+    // Edge Case Test Case - Internal Server Error
+    @Test(description = "Edge Case Test Case - Internal Server Error", expectedExceptions = AssertionError.class)
+    public void testEdgeCase_InternalServerError() {
+        given()
                 .when()
-                .post("/pet/1/uploadImage")
+                .post("/pet/{petId}/uploadImage")
                 .then()
-                .statusCode(200)
-                .body("code", 200, "type", "unknown", "message", "pet image uploaded successfully with additional metadata");
+                .statusCode(500);
     }
-
-    @Test(description = "POST /pet/{petId}/uploadImage without file")
-    public void postWithoutFileUploadTest() {
-        RestAssured.given()
-                .header("Content-Type", "multipart/form-data")
-                .when()
-                .post("/pet/1/uploadImage")
-                .then()
-                .statusCode(400)
-                .body("code", 400, "type", "unknown", "message", "File is required");
-    }
-
-    @Test(description = "POST /pet/{petId}/uploadImage with invalid request body format")
-    public void postInvalidRequestBodyFormatUploadTest() {
-        RestAssured.given()
-                .header("Content-Type", "application/json")
-                .body("{}")
-                .when()
-                .post("/pet/1/uploadImage")
-                .then()
-                .statusCode(400)
-                .body("code", 400, "type", "unknown", "message", "Invalid request body format");
-    }
-
-    @Test(description = "POST /pet/{petId}/uploadImage with invalid request method")
-    public void postInvalidRequestMethodUploadTest() {
-        RestAssured.given()
-                .header("Content-Type", "multipart/form-data")
-                .when()
-                .get("/pet/1/uploadImage") // invalid request method
-                .then()
-                .statusCode(405)
-                .body("code", 405, "type", "unknown", "message", "Method not allowed");
-    }
-
 }

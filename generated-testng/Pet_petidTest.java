@@ -1,6 +1,10 @@
-import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import io.restassured.path.json.JsonPath;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import static io.restassured.RestAssured.*;
+import static org.hamcrest.Matchers.*;
 
 public class PetAPITest {
 
@@ -9,153 +13,160 @@ public class PetAPITest {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // Group test methods by HTTP method using comments
-    /* GET Methods */
-    @Test(description = "Test Case 1: Valid Pet ID")
-    public void testValidPetID_GET() {
-        int petId = 123;
-        String response = RestAssured.get("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(200, RestAssured.getStatusCode());
+    // POST /pet/{petId}
+    @Test(description = "POST /pet/123 with invalid input")
+    public void testPostPetInvalidInput() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .when()
+                .post("/pet/123")
+                .then()
+                .statusCode(405);
     }
 
-    @Test(description = "Large Valid Pet ID (> 1000)")
-    public void testValidPetID_LARGE_GET() {
-        int petId = 1234;
-        String response = RestAssured.get("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(200, RestAssured.getStatusCode());
+    @Test(description = "POST /pet/123 with valid petId and updated name")
+    public void testPostPetValidInputName() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .formParam("name", "Max")
+                .when()
+                .post("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Invalid Pet ID")
-    public void testInvalidPetID_GET() {
-        int petId = -1;
-        String response = RestAssured.get("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(404, RestAssured.getStatusCode());
+    @Test(description = "POST /pet/123 with valid petId and empty name")
+    public void testPostPetValidInputEmptyName() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .formParam("name", "")
+                .when()
+                .post("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Large Invalid Pet ID (-1000)")
-    public void testInvalidPetID_LARGE_GET() {
-        int petId = -1234;
-        String response = RestAssured.get("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(404, RestAssured.getStatusCode());
+    @Test(description = "POST /pet/123 with valid petId and empty status")
+    public void testPostPetValidInputEmptyStatus() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .formParam("status", "")
+                .when()
+                .post("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Missing Pet ID")
-    public void testMissingPetID_GET() {
-        int petId = 0;
-        String response = RestAssured.get("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(404, RestAssured.getStatusCode());
+    @Test(description = "POST /pet/123 with valid petId and empty name and status")
+    public void testPostPetValidInputEmptyNameStatus() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .formParam("name", "")
+                .formParam("status", "")
+                .when()
+                .post("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Large Pet ID (> 1000000)")
-    public void testLargePetID_GET() {
-        int petId = 1000000;
-        String response = RestAssured.get("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(404, RestAssured.getStatusCode());
+    // GET /pet/{petId}
+    @Test(description = "GET /pet/123 with valid petId")
+    public void testGetPetValidInput() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Zero Pet ID")
-    public void testZeroPetID_GET() {
-        int petId = 0;
-        String response = RestAssured.get("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(404, RestAssured.getStatusCode());
+    @Test(description = "GET /pet/123 with invalid petId")
+    public void testGetPetInvalidInput() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/pet/999")
+                .then()
+                .statusCode(404);
     }
 
-    /* POST Methods */
-    @Test(description = "Test Case 1 - Valid Pet ID and Name")
-    public void testValidPetID_POST() {
-        int petId = 12345;
-        String response = RestAssured.given()
-                .contentType("application/json")
-                .body("{\"name\":\"New Pet Name\",\"status\":\"available\"}")
-                .post("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(200, RestAssured.getStatusCode());
+    // PUT /pet/{petId}
+    @Test(description = "PUT /pet/123 with valid petId and updated name")
+    public void testPutPetValidInputName() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .formParam("name", "Max")
+                .when()
+                .put("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Test Case 2 - Valid Pet ID and Status")
-    public void testValidPetID_STATUS_POST() {
-        int petId = 67890;
-        String response = RestAssured.given()
-                .contentType("application/json")
-                .body("{\"name\":\"New Pet Name\",\"status\":\"available\"}")
-                .post("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(200, RestAssured.getStatusCode());
+    @Test(description = "PUT /pet/123 with valid petId and empty name")
+    public void testPutPetValidInputEmptyName() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .formParam("name", "")
+                .when()
+                .put("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Test Case 3 - Invalid Pet ID (empty)")
-    public void testInvalidPetID_EMPTY_POST() {
-        String response = RestAssured.given()
-                .contentType("application/json")
-                .body("{\"name\":\"New Pet Name\",\"status\":\"available\"}")
-                .post("/pet/").asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(405, RestAssured.getStatusCode());
+    @Test(description = "PUT /pet/123 with valid petId and empty status")
+    public void testPutPetValidInputEmptyStatus() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .formParam("status", "")
+                .when()
+                .put("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Test Case 4 - Valid Pet ID, Name and Status")
-    public void testValidPetID_NAME_STATUS_POST() {
-        int petId = 12345;
-        String response = RestAssured.given()
-                .contentType("application/json")
-                .body("{\"name\":\"New Pet Name\",\"status\":\"available\"}")
-                .post("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(200, RestAssured.getStatusCode());
+    @Test(description = "PUT /pet/123 with valid petId and empty name and status")
+    public void testPutPetValidInputEmptyNameStatus() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .formParam("name", "")
+                .formParam("status", "")
+                .when()
+                .put("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    @Test(description = "Test Case 5 - Missing Pet ID")
-    public void testMissingPetID_POST() {
-        String response = RestAssured.given()
-                .contentType("application/json")
-                .body("{\"name\":\"New Pet Name\",\"status\":\"available\"}")
-                .post("/pet/").asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(405, RestAssured.getStatusCode());
+    // DELETE /pet/{petId}
+    @Test(description = "DELETE /pet/123 with valid petId")
+    public void testDeletePetValidInput() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .when()
+                .delete("/pet/123")
+                .then()
+                .statusCode(200);
     }
 
-    /* PUT Methods */
-    @Test(description = "Test Case 1 - Valid Pet ID and Status")
-    public void testValidPetID_STATUS_PUT() {
-        int petId = 12345;
-        String response = RestAssured.given()
-                .contentType("application/json")
-                .body("{\"name\":\"New Pet Name\",\"status\":\"available\"}")
-                .put("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(200, RestAssured.getStatusCode());
-    }
-
-    @Test(description = "Test Case 2 - Invalid Pet ID (empty)")
-    public void testInvalidPetID_EMPTY_PUT() {
-        String response = RestAssured.given()
-                .contentType("application/json")
-                .body("{\"name\":\"New Pet Name\",\"status\":\"available\"}")
-                .put("/pet/").asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(405, RestAssured.getStatusCode());
-    }
-
-    /* DELETE Methods */
-    @Test(description = "Test Case 1 - Valid Pet ID")
-    public void testValidPetID_DELETE() {
-        int petId = 12345;
-        String response = RestAssured.delete("/pet/{petId}", petId).asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(200, RestAssured.getStatusCode());
-    }
-
-    @Test(description = "Test Case 2 - Invalid Pet ID (empty)")
-    public void testInvalidPetID_EMPTY_DELETE() {
-        String response = RestAssured.delete("/pet/").asString();
-        // Validate HTTP status code
-        org.testng.Assert.assertEquals(405, RestAssured.getStatusCode());
+    @Test(description = "DELETE /pet/999 with invalid petId")
+    public void testDeletePetInvalidInput() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Content-Type", "application/json")
+                .when()
+                .delete("/pet/999")
+                .then()
+                .statusCode(404);
     }
 }

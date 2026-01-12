@@ -7,7 +7,7 @@ from code_generator import main as generate_code_testNG
 
 import os
 import shutil
-
+#Api That Takes JSON OpenAPI file and config file as input and returns ZIP of generated TestNG Java code
 
 app = FastAPI(title="Test Case Generation")
 

@@ -1,167 +1,124 @@
 import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
+import io.restassured.http.Method;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-
 public class PetAPITest {
 
-    @BeforeClass
+    @BeforeClass(alwaysRun = true)
     public void setup() {
+        // Set Base URI
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // POST Tests
-    @Test
-    public void testPostValidPetObject() {
-        Response response = given().contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":[\"dog\",\"cute\"]}")
-                .when()
-                .post("/pet")
+    @Test(priority = 0, groups = {"POST"})
+    public void validPetObjectPost() {
+        // Valid Pet Object
+        RestAssured.given(Method.POST, "/pet")
+                .body("{\"id\":123,\"category\":{\"id\":1,\"name\":\"string\"},\"name\":\"Max\",\"photoUrls\":[\"string\"],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(201);
+                .statusCode(200)
+                .log().all();
     }
 
-    @Test
-    public void testPostInvalidId() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":null,\"name\":\"Max\",\"tag\":[\"dog\",\"cute\"]}")
-                .when()
-                .post("/pet")
+    @Test(priority = 0, groups = {"POST"})
+    public void invalidPetObjectPost() {
+        // Invalid Pet Object (missing id)
+        RestAssured.given(Method.POST, "/pet")
+                .body("{\"category\":{\"id\":1,\"name\":\"string\"},\"name\":\"Max\",\"photoUrls\":[\"string\"],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(405);
+                .statusCode(405)
+                .log().all();
     }
 
-    @Test
-    public void testPostInvalidName() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":null,\"tag\":[\"dog\",\"cute\"]}")
-                .when()
-                .post("/pet")
+    @Test(priority = 0, groups = {"POST"})
+    public void validPetObjectWithEmptyPhotoUrlsArrayPost() {
+        // Valid Pet Object with empty photoUrls array
+        RestAssured.given(Method.POST, "/pet")
+                .body("{\"id\":123,\"category\":{\"id\":1,\"name\":\"string\"},\"name\":\"Max\",\"photoUrls\":[],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(405);
+                .statusCode(200)
+                .log().all();
     }
 
-    @Test
-    public void testPostInvalidTag() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":null}")
-                .when()
-                .post("/pet")
+    @Test(priority = 0, groups = {"POST"})
+    public void validPetObjectWithInvalidCategoryPost() {
+        // Valid Pet Object with invalid category
+        RestAssured.given(Method.POST, "/pet")
+                .body("{\"id\":123,\"category\":{},\"name\":\"Max\",\"photoUrls\":[\"string\"],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(405);
+                .statusCode(200)
+                .log().all();
     }
 
-    @Test
-    public void testPostEmptyPetObject() {
-        given().contentType(ContentType.JSON)
-                .body("{}")
-                .when()
-                .post("/pet")
+    @Test(priority = 0, groups = {"POST"})
+    public void invalidPetObjectCategoryIsNotAnArrayPost() {
+        // Invalid Pet Object (category is not an array)
+        RestAssured.given(Method.POST, "/pet")
+                .body("{\"id\":123,\"category\":\"string\",\"name\":\"Max\",\"photoUrls\":[\"string\"],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(405);
+                .statusCode(405)
+                .log().all();
     }
 
-    @Test
-    public void testPostLargePetObject() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":[\"dog\",\"cute\",\"playful\",\"smart\"]}")
-                .when()
-                .post("/pet")
+    @Test(priority = 1, groups = {"PUT"})
+    public void validPetCreationPut() {
+        // Valid Pet Creation
+        RestAssured.given(Method.PUT, "/pet")
+                .header("Content-Type", "application/json")
+                .body("{\"id\":\"12345\",\"name\":\"Fido\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(201);
+                .statusCode(200)
+                .log().all();
     }
 
-    @Test
-    public void testPostExcessiveFields() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":\"Max\",\"tag\":[\"dog\",\"cute\",\"playful\",\"smart\",\"large\",\"heavy\"]}")
-                .when()
-                .post("/pet")
+    @Test(priority = 1, groups = {"PUT"})
+    public void invalidIdSuppliedPut() {
+        // Invalid ID Supplied
+        RestAssured.given(Method.PUT, "/pet")
+                .header("Content-Type", "application/json")
+                .body("{\"id\":\"\",\"name\":\"Fido\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(405);
+                .statusCode(400)
+                .log().all();
     }
 
-    @Test
-    public void testPostJsonParsingError() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":12345,\"name\":\"Max\"")
-                .when()
-                .post("/pet")
+    @Test(priority = 1, groups = {"PUT"})
+    public void petNotFoundPut() {
+        // Pet Not Found
+        RestAssured.given(Method.PUT, "/pet")
+                .header("Content-Type", "application/json")
+                .body("{\"id\":\"99999\",\"name\":\"Fido\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(405);
+                .statusCode(404)
+                .log().all();
     }
 
-    // PUT Tests
-    @Test
-    public void testPutValidPetUpdate() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":1,\"category\":{\"id\":2,\"name\":\"Dog\"},\"name\":\"Buddy\",\"photoUrls\":[\"url1\",\"url2\"],\"tags\":[{\"id\":4,\"name\":\"tag1\"}]}")
-                .when()
-                .put("/pet/{petId}", 1)
+    @Test(priority = 1, groups = {"PUT"})
+    public void validationExceptionMissingNamePut() {
+        // Validation Exception (Missing Name)
+        RestAssured.given(Method.PUT, "/pet")
+                .header("Content-Type", "application/json")
+                .body("{\"id\":\"12345\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(200);
+                .statusCode(405)
+                .log().all();
     }
 
-    @Test
-    public void testPutInvalidID() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":-1,\"category\":{\"id\":2,\"name\":\"Dog\"},\"name\":\"Buddy\",\"photoUrls\":[\"url1\",\"url2\"],\"tags\":[{\"id\":4,\"name\":\"tag1\"}]}")
-                .when()
-                .put("/pet/{petId}", 1)
+    @Test(priority = 1, groups = {"PUT"})
+    public void validationExceptionEmptyNamePut() {
+        // Validation Exception (Empty Name)
+        RestAssured.given(Method.PUT, "/pet")
+                .header("Content-Type", "application/json")
+                .body("{\"id\":\"12345\",\"name\":\"\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
                 .then()
-                .assertThat()
-                .statusCode(400);
+                .statusCode(405)
+                .log().all();
     }
 
-    @Test
-    public void testPutPetNotfoundUpdate() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":999,\"category\":{\"id\":2,\"name\":\"Dog\"},\"name\":\"Buddy\",\"photoUrls\":[\"url1\",\"url2\"],\"tags\":[{\"id\":4,\"name\":\"tag1\"}]}")
-                .when()
-                .put("/pet/{petId}", 1)
-                .then()
-                .assertThat()
-                .statusCode(404);
-    }
-
-    @Test
-    public void testPutEmptyBodyUpdate() {
-        given().contentType(ContentType.JSON)
-                .body("{}")
-                .when()
-                .put("/pet/{petId}", 1)
-                .then()
-                .assertThat()
-                .statusCode(400);
-    }
-
-    @Test
-    public void testPutInvalidJsonFormatUpdate() {
-        given().contentType(ContentType.JSON)
-                .body("{\"id\":\"string\"}")
-                .when()
-                .put("/pet/{petId}", 1)
-                .then()
-                .assertThat()
-                .statusCode(400);
-    }
-
-    @AfterClass
+    @AfterClass(alwaysRun = true)
     public void tearDown() {
-        RestAssured.reset();
+        // Nothing to do
     }
 }
