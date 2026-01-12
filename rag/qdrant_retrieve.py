@@ -1,24 +1,28 @@
 from qdrant_client import QdrantClient
 import ollama
 
+# Qdrant client
 qdrant = QdrantClient(url="http://localhost:6333")
 
-def get_embedding(text):
-    return ollama.embeddings(model="nomic-embed-text", prompt=text)["embedding"]
+# Collection name
+COLLECTION = "api_test_patterns"
 
-def retrieve_patterns(endpoint, k=5):
-    query_text = f"""
-    API testing pattern for:
-    Method: {endpoint['method']}
-    Path: {endpoint['path']}
-    Has Body: {bool(endpoint['requestBody'])}
-    """
+def get_embedding(text: str):
+    return ollama.embeddings(
+        model="nomic-embed-text",
+        prompt=text
+    )["embedding"]
+
+def retrieve_patterns(path: str, k: int = 5):
+    # Lightweight, stable retrieval query
+    query_text = f"API endpoint path: {path}"
+
     query_vec = get_embedding(query_text)
 
-    result = qdrant.search(
-        collection_name="patterns_collection",
-        query_vector=query_vec,
+    result = qdrant.query_points(
+        collection_name=COLLECTION,
+        query=query_vec,
         limit=k
     )
 
-    return [item.payload for item in result]
+    return [point.payload for point in result.points]

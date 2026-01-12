@@ -1,172 +1,66 @@
+import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import io.restassured.path.json.JsonPath;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static io.restassured.RestAssured.*;
-import static org.hamcrest.Matchers.*;
+import static io.restassured.RestAssured.given;
 
-public class PetAPITest {
+public class PetTest {
 
     @BeforeClass
     public void setup() {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // POST /pet/{petId}
-    @Test(description = "POST /pet/123 with invalid input")
-    public void testPostPetInvalidInput() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .when()
-                .post("/pet/123")
-                .then()
-                .statusCode(405);
+    private Object[][] getTestData() {
+        return new Object[][]{
+                {123, null},
+                {-123, null},
+                {null, null}
+        };
     }
 
-    @Test(description = "POST /pet/123 with valid petId and updated name")
-    public void testPostPetValidInputName() {
+    @Test(dataProvider = "getTestData")
+    public void testGetPet(int petId, int expectedStatus) {
         given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .formParam("name", "Max")
+                .pathParam("petId", petId)
                 .when()
-                .post("/pet/123")
+                .get("/pet/{petId}")
                 .then()
-                .statusCode(200);
+                .assertThat().statusCode(expectedStatus);
     }
 
-    @Test(description = "POST /pet/123 with valid petId and empty name")
-    public void testPostPetValidInputEmptyName() {
+    @Test(dataProvider = "getTestData")
+    public void testUpdatePet(int petId, int expectedStatus) {
         given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .formParam("name", "")
+                .pathParam("petId", petId)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body(new Pet(123, "Max"))
                 .when()
-                .post("/pet/123")
+                .patch("/pet/{petId}")
                 .then()
-                .statusCode(200);
+                .assertThat().statusCode(expectedStatus);
     }
 
-    @Test(description = "POST /pet/123 with valid petId and empty status")
-    public void testPostPetValidInputEmptyStatus() {
+    @Test(dataProvider = "getTestData")
+    public void testDeletePet(int petId, int expectedStatus) {
         given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .formParam("status", "")
+                .pathParam("petId", petId)
+                .header("api_key", "abc")
                 .when()
-                .post("/pet/123")
+                .delete("/pet/{petId}")
                 .then()
-                .statusCode(200);
+                .assertThat().statusCode(expectedStatus);
     }
 
-    @Test(description = "POST /pet/123 with valid petId and empty name and status")
-    public void testPostPetValidInputEmptyNameStatus() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .formParam("name", "")
-                .formParam("status", "")
-                .when()
-                .post("/pet/123")
-                .then()
-                .statusCode(200);
-    }
+    private class Pet {
+        public int id;
+        public String name;
 
-    // GET /pet/{petId}
-    @Test(description = "GET /pet/123 with valid petId")
-    public void testGetPetValidInput() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .when()
-                .get("/pet/123")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "GET /pet/123 with invalid petId")
-    public void testGetPetInvalidInput() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .when()
-                .get("/pet/999")
-                .then()
-                .statusCode(404);
-    }
-
-    // PUT /pet/{petId}
-    @Test(description = "PUT /pet/123 with valid petId and updated name")
-    public void testPutPetValidInputName() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .formParam("name", "Max")
-                .when()
-                .put("/pet/123")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "PUT /pet/123 with valid petId and empty name")
-    public void testPutPetValidInputEmptyName() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .formParam("name", "")
-                .when()
-                .put("/pet/123")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "PUT /pet/123 with valid petId and empty status")
-    public void testPutPetValidInputEmptyStatus() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .formParam("status", "")
-                .when()
-                .put("/pet/123")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "PUT /pet/123 with valid petId and empty name and status")
-    public void testPutPetValidInputEmptyNameStatus() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .formParam("name", "")
-                .formParam("status", "")
-                .when()
-                .put("/pet/123")
-                .then()
-                .statusCode(200);
-    }
-
-    // DELETE /pet/{petId}
-    @Test(description = "DELETE /pet/123 with valid petId")
-    public void testDeletePetValidInput() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .when()
-                .delete("/pet/123")
-                .then()
-                .statusCode(200);
-    }
-
-    @Test(description = "DELETE /pet/999 with invalid petId")
-    public void testDeletePetInvalidInput() {
-        given()
-                .contentType(ContentType.JSON)
-                .header("Content-Type", "application/json")
-                .when()
-                .delete("/pet/999")
-                .then()
-                .statusCode(404);
+        public Pet(int id, String name) {
+            this.id = id;
+            this.name = name;
+        }
     }
 }

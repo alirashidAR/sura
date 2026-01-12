@@ -1,124 +1,76 @@
 import io.restassured.RestAssured;
-import io.restassured.http.Method;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class PetAPITest {
+public class PetAPITests {
 
-    @BeforeClass(alwaysRun = true)
+    @BeforeClass
     public void setup() {
-        // Set Base URI
+        // Setup Rest Assured with the base URI
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    @Test(priority = 0, groups = {"POST"})
-    public void validPetObjectPost() {
-        // Valid Pet Object
-        RestAssured.given(Method.POST, "/pet")
-                .body("{\"id\":123,\"category\":{\"id\":1,\"name\":\"string\"},\"name\":\"Max\",\"photoUrls\":[\"string\"],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
-                .then()
-                .statusCode(200)
-                .log().all();
+    @DataProvider(name = "petData")
+    public Object[][] dataProvider() {
+        return new Object[][]{
+                {"Valid Pet PUT Request", "{\"id\":1,\"category\":{\"name\":\"Dogs\"},\"name\":\"Max\",\"photoUrls\":[\"http://example.com/image1.jpg\",\"http://example.com/image2.jpg\"],\"tags\":[{\"name\":\"tag1\"},{\"name\":\"tag2\"}]}"},
+                {"Invalid Pet PUT Request - Missing ID", ""},
+                {"Invalid Pet PUT Request - Invalid Category", "{\"id\":1,\"category\":{\"name\":\"Invalid Category\"},\"name\":\"Max\",\"photoUrls\":[\"http://example.com/image1.jpg\",\"http://example.com/image2.jpg\"],\"tags\":[{\"name\":\"tag1\"},{\"name\":\"tag2\"}]}"},
+                {"Pet PUT Request with Invalid Tags", "{\"id\":1,\"category\":{\"name\":\"Dogs\"},\"name\":\"Max\",\"photoUrls\":[\"http://example.com/image1.jpg\",\"http://example.com/image2.jpg\"],\"tags\":[{\"name\":\"tag1\"},{\"name\":\"Invalid Tag\"}]}"},
+                {"Non-Existent Pet PUT Request", "{\"id\":1,\"category\":{\"name\":\"Dogs\"},\"name\":\"Max\",\"photoUrls\":[\"http://example.com/image1.jpg\",\"http://example.com/image2.jpg\"],\"tags\":[{\"name\":\"tag1\"},{\"name\":\"tag2\"}]}"}
+        };
     }
 
-    @Test(priority = 0, groups = {"POST"})
-    public void invalidPetObjectPost() {
-        // Invalid Pet Object (missing id)
-        RestAssured.given(Method.POST, "/pet")
-                .body("{\"category\":{\"id\":1,\"name\":\"string\"},\"name\":\"Max\",\"photoUrls\":[\"string\"],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
-                .then()
-                .statusCode(405)
-                .log().all();
-    }
-
-    @Test(priority = 0, groups = {"POST"})
-    public void validPetObjectWithEmptyPhotoUrlsArrayPost() {
-        // Valid Pet Object with empty photoUrls array
-        RestAssured.given(Method.POST, "/pet")
-                .body("{\"id\":123,\"category\":{\"id\":1,\"name\":\"string\"},\"name\":\"Max\",\"photoUrls\":[],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
-                .then()
-                .statusCode(200)
-                .log().all();
-    }
-
-    @Test(priority = 0, groups = {"POST"})
-    public void validPetObjectWithInvalidCategoryPost() {
-        // Valid Pet Object with invalid category
-        RestAssured.given(Method.POST, "/pet")
-                .body("{\"id\":123,\"category\":{},\"name\":\"Max\",\"photoUrls\":[\"string\"],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
-                .then()
-                .statusCode(200)
-                .log().all();
-    }
-
-    @Test(priority = 0, groups = {"POST"})
-    public void invalidPetObjectCategoryIsNotAnArrayPost() {
-        // Invalid Pet Object (category is not an array)
-        RestAssured.given(Method.POST, "/pet")
-                .body("{\"id\":123,\"category\":\"string\",\"name\":\"Max\",\"photoUrls\":[\"string\"],\"tags\":[{\"id\":1,\"name\":\"string\"}]}")
-                .then()
-                .statusCode(405)
-                .log().all();
-    }
-
-    @Test(priority = 1, groups = {"PUT"})
-    public void validPetCreationPut() {
-        // Valid Pet Creation
-        RestAssured.given(Method.PUT, "/pet")
+    @Test(dataProvider = "petData", dataProviderClass = PetAPITests.class, groups = {"General"})
+    public void putPet(String testName, String requestBody) {
+        // PUT /pet
+        RestAssured.given()
                 .header("Content-Type", "application/json")
-                .body("{\"id\":\"12345\",\"name\":\"Fido\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
-                .then()
-                .statusCode(200)
-                .log().all();
+                .pathParam("id", 1)
+                .body(requestBody)
+                .when().put("/pet/{id}")
+                .then().statusCode(Integer.parseInt(getExpectedStatus(testName)));
     }
 
-    @Test(priority = 1, groups = {"PUT"})
-    public void invalidIdSuppliedPut() {
-        // Invalid ID Supplied
-        RestAssured.given(Method.PUT, "/pet")
+    @Test(dataProvider = "petData", dataProviderClass = PetAPITests.class, groups = {"General"})
+    public void getPet(String testName, String requestBody) {
+        // GET /pet
+        RestAssured.given()
                 .header("Content-Type", "application/json")
-                .body("{\"id\":\"\",\"name\":\"Fido\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
-                .then()
-                .statusCode(400)
-                .log().all();
+                .queryParam("id", 1)
+                .body(requestBody)
+                .when().get("/pet/{id}")
+                .then().statusCode(Integer.parseInt(getExpectedStatus(testName)));
     }
 
-    @Test(priority = 1, groups = {"PUT"})
-    public void petNotFoundPut() {
-        // Pet Not Found
-        RestAssured.given(Method.PUT, "/pet")
+    @Test(dataProvider = "petData", dataProviderClass = PetAPITests.class, groups = {"General"})
+    public void postPet(String testName, String requestBody) {
+        // POST /pet
+        RestAssured.given()
                 .header("Content-Type", "application/json")
-                .body("{\"id\":\"99999\",\"name\":\"Fido\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
-                .then()
-                .statusCode(404)
-                .log().all();
+                .body(requestBody)
+                .when().post("/pet")
+                .then().statusCode(Integer.parseInt(getExpectedStatus(testName)));
     }
 
-    @Test(priority = 1, groups = {"PUT"})
-    public void validationExceptionMissingNamePut() {
-        // Validation Exception (Missing Name)
-        RestAssured.given(Method.PUT, "/pet")
+    @Test(dataProvider = "petData", dataProviderClass = PetAPITests.class, groups = {"General"})
+    public void deletePet(String testName, String requestBody) {
+        // DELETE /pet
+        RestAssured.given()
                 .header("Content-Type", "application/json")
-                .body("{\"id\":\"12345\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
-                .then()
-                .statusCode(405)
-                .log().all();
+                .pathParam("id", 1)
+                .body(requestBody)
+                .when().delete("/pet/{id}")
+                .then().statusCode(Integer.parseInt(getExpectedStatus(testName)));
     }
 
-    @Test(priority = 1, groups = {"PUT"})
-    public void validationExceptionEmptyNamePut() {
-        // Validation Exception (Empty Name)
-        RestAssured.given(Method.PUT, "/pet")
-                .header("Content-Type", "application/json")
-                .body("{\"id\":\"12345\",\"name\":\"\",\"tag\":[{\"name\":\"Lost\"},{\"name\":\"Male\"}]}")
-                .then()
-                .statusCode(405)
-                .log().all();
-    }
-
-    @AfterClass(alwaysRun = true)
-    public void tearDown() {
-        // Nothing to do
+    private int getExpectedStatus(String testName) {
+        if (testName.equals("Valid Pet PUT Request")) return 200;
+        else if (testName.equals("Invalid Pet PUT Request - Missing ID")) return 400;
+        else if (testName.equals("Invalid Pet PUT Request - Invalid Category")) return 400;
+        else if (testName.equals("Pet PUT Request with Invalid Tags")) return 400;
+        else if (testName.equals("Non-Existent Pet PUT Request")) return 404;
+        else return 200;
     }
 }

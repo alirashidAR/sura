@@ -1,74 +1,147 @@
-import io.restassured.RestAssured;
-import org.testng.annotations.AfterClass;
+import io.restassured.http.ContentType;
+import io.restassured.path.json.JsonPath;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 public class PetImageUploadTest {
-
-    private String petId = "1";
 
     @BeforeClass
     public void setup() {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // Happy Path Test Case - Valid Pet ID and No File
-    @Test(description = "Happy Path Test Case - Valid Pet ID and No File")
-    public void testHappyPath_NoFile() {
+    // Grouping test methods by HTTP method
+
+    /**
+     * Positive scenarios for POST /pet/{petId}/uploadImage
+     */
+    @DataProvider(name = "postTestData")
+    public Object[][] postTestDataProvider() {
+        return new Object[][]{
+                {
+                        1,
+                        null,
+                        null,
+                        "{\"file\":{\"filename\":\"valid_image.jpg\",\"size\":100000,\"type\":\"image/jpeg\"}}"
+                },
+                {
+                        1,
+                        null,
+                        null,
+                        "{\"file\":{\"filename\":\"large_image.jpg\",\"size\":1000000,\"type\":\"image/jpeg\"}}"
+                }
+        };
+    }
+
+    /**
+     * Negative scenarios for POST /pet/{petId}/uploadImage
+     */
+    @DataProvider(name = "postNegativeTestData")
+    public Object[][] postNegativeTestData() {
+        return new Object[][]{
+                {
+                        -1,
+                        null,
+                        null,
+                        "{\"file\":{\"filename\":\"valid_image.jpg\",\"size\":100000,\"type\":\"image/jpeg\"}}"
+                },
+                {
+                        1,
+                        null,
+                        null,
+                        "{\"file\":{\"filename\":\"invalid_image.exe\",\"size\":100000,\"type\":\"application/octet-stream\"}}"
+                }
+        };
+    }
+
+    /**
+     * Edge cases for POST /pet/{petId}/uploadImage
+     */
+    @DataProvider(name = "postEdgeCaseData")
+    public Object[][] postEdgeCaseTestData() {
+        return new Object[][]{
+                {
+                        1,
+                        null,
+                        null,
+                        "{\"file\":{\"filename\":\"large_image.jpg\",\"size\":1000000,\"type\":\"image/jpeg\"}}"
+                }
+        };
+    }
+
+    @Test(dataProvider = "postTestData")
+    public void testUploadImageValidPetId(int petId, Object queryParam, String header, String request) {
         given()
+                .baseUri(RestAssured.baseURI)
                 .pathParam("petId", petId)
+                .body(request)
                 .when()
                 .post("/pet/{petId}/uploadImage")
                 .then()
                 .statusCode(200);
     }
 
-    // Happy Path Test Case - Valid Pet ID and File
-    @Test(description = "Happy Path Test Case - Valid Pet ID and File")
-    public void testHappyPath_File() {
+    @Test(dataProvider = "postEdgeCaseData")
+    public void testUploadImageLargeFile(int petId, Object queryParam, String header, String request) {
         given()
+                .baseUri(RestAssured.baseURI)
                 .pathParam("petId", petId)
-                .header("Content-Type", "multipart/form-data")
-                .body("{\"file\":\"image.jpg\"}")
+                .body(request)
                 .when()
                 .post("/pet/{petId}/uploadImage")
                 .then()
-                .statusCode(200);
+                .statusCode(413);
     }
 
-    // Edge Case Test Case - Invalid File
-    @Test(description = "Edge Case Test Case - Invalid File", expectedExceptions = AssertionError.class)
-    public void testEdgeCase_InvalidFile() {
+    @Test(dataProvider = "postNegativeTestData")
+    public void testUploadImageInvalidPetId(int petId, Object queryParam, String header, String request) {
         given()
+                .baseUri(RestAssured.baseURI)
                 .pathParam("petId", petId)
-                .when()
-                .post("/pet/{petId}/uploadImage")
-                .then()
-                .statusCode(400);
-    }
-
-    // Edge Case Test Case - Invalid Pet ID
-    @Test(description = "Edge Case Test Case - Invalid Pet ID", expectedExceptions = AssertionError.class)
-    public void testEdgeCase_InvalidPetID() {
-        given()
-                .pathParam("petId", null)
+                .body(request)
                 .when()
                 .post("/pet/{petId}/uploadImage")
                 .then()
                 .statusCode(404);
     }
 
-    // Edge Case Test Case - Internal Server Error
-    @Test(description = "Edge Case Test Case - Internal Server Error", expectedExceptions = AssertionError.class)
-    public void testEdgeCase_InternalServerError() {
+    @Test(dataProvider = "postNegativeTestData")
+    public void testUploadImageInvalidFileType(int petId, Object queryParam, String header, String request) {
         given()
+                .baseUri(RestAssured.baseURI)
+                .pathParam("petId", petId)
+                .body(request)
                 .when()
                 .post("/pet/{petId}/uploadImage")
                 .then()
-                .statusCode(500);
+                .statusCode(400);
+    }
+
+    @Test
+    public void testUploadImageWithoutPetId() {
+        given()
+                .baseUri(RestAssured.baseURI)
+                .pathParam("petId", -1)
+                .body("")
+                .when()
+                .post("/pet/{petId}/uploadImage")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    public void testUploadImageWithoutAdditionalMetadata() {
+        given()
+                .baseUri(RestAssured.baseURI)
+                .pathParam("petId", 1)
+                .body("")
+                .when()
+                .post("/pet/{petId}/uploadImage")
+                .then()
+                .statusCode(200);
     }
 }

@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/generate-tests/")
+@app.post("/generate/")
 async def generate_tests(
     openapi_file: UploadFile = File(...),
     config_file: UploadFile = File(...)

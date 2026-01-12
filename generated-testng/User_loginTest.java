@@ -1,328 +1,138 @@
-import io.restassured.http.ContentType;
-import io.restassured.path.json.JsonPath;
+import io.restassured.RestAssured;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static io.restassured.RestAssured.baseURI;
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.notNullValue);
 
-public class LoginTest extends TestBase {
+public class UserLoginAPITest {
 
     @BeforeClass
     public void setup() {
-        baseURI = "https://api.example.com";
+        RestAssured.baseURI = "https://api.example.com";
     }
 
-    // GROUP 1 - GET TESTS
-    /**
-     * Valid login test case for GET method
-     */
-    @Test(description = "Valid login test case")
-    public void validLoginGetTest() {
-        given()
-                .pathParam("username", "johnDoe")
-                .pathParam("password", "mySecretPassword")
-                .when()
-                .get("/user/login?username={username}&password={password}")
-                .then()
-                .statusCode(200)
-                .body("X-Expires-After", equalTo("2024-05-01T12:00:00Z"))
-                .body("X-Rate-Limit", equalTo(100))
-                .body("token", notNullValue());
+    @DataProvider(name = "validLoginTestData")
+    public Object[][] validLoginTestData() {
+        return new Object[][]{
+                {"test_user", "test_password"},
+                {"empty_username", ""},
+                {"missing_username", "test_password"},
+                {"missing_password", "test_user"}
+        };
     }
 
-    /**
-     * Invalid password test case for GET method
-     */
-    @Test(description = "Invalid password test case")
-    public void invalidPasswordGetTest() {
-        given()
-                .pathParam("username", "johnDoe")
-                .pathParam("password", "wrongPassword")
-                .when()
-                .get("/user/login?username={username}&password={password}")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
+    @DataProvider(name = "invalidLoginTestData")
+    public Object[][] invalidLoginTestData() {
+        return new Object[][]{
+                {"invalid_password", "test_user"},
+                {"empty_password", "test_user"},
+                {"empty_username", ""},
+                {"empty_password", ""}
+        };
     }
 
-    /**
-     * Empty password test case for GET method
-     */
-    @Test(description = "Empty password test case")
-    public void emptyPasswordGetTest() {
+    /* GET /user/login tests */
+
+    @Test(dataProvider = "validLoginTestData")
+    public void validGetUserLoginTest(String username, String password) {
+        // Valid Login Test
         given()
-                .pathParam("username", "johnDoe")
-                .pathParam("password", "")
-                .when()
-                .get("/user/login?username={username}&password={password}")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
+                .queryParam("username", username)
+                .queryParam("password", password)
+                .header("Content-Type", "application/json").
+        when().
+                get("/user/login").
+        then().statusCode(200);
     }
 
-    /**
-     * Empty username test case for GET method
-     */
-    @Test(description = "Empty username test case")
-    public void emptyUsernameGetTest() {
+    @Test(dataProvider = "invalidLoginTestData")
+    public void invalidGetUserLoginTest(String username, String password) {
+        // Invalid Credentials Test
         given()
-                .pathParam("username", "")
-                .pathParam("password", "mySecretPassword")
-                .when()
-                .get("/user/login?username={username}&password={password}")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
+                .queryParam("username", username)
+                .queryParam("password", password)
+                .header("Content-Type", "application/json").
+        when().
+                get("/user/login").
+        then().statusCode(400);
     }
 
-    /**
-     * Non-string username test case for GET method
-     */
-    @Test(description = "Non-string username test case")
-    public void nonStringUsernameGetTest() {
+    /* POST /user/login tests */
+
+    @Test(dataProvider = "validLoginTestData")
+    public void validPostUserLoginTest(String username, String password) {
+        // Valid Login Test
         given()
-                .pathParam("username", 12345)
-                .pathParam("password", "mySecretPassword")
-                .when()
-                .get("/user/login?username={username}&password={password}")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
+                .queryParam("username", username)
+                .queryParam("password", password)
+                .header("Content-Type", "application/json").
+        when().
+                post("/user/login").
+        then().statusCode(200);
     }
 
-    // GROUP 2 - POST TESTS
-    /**
-     * Valid login test case for POST method
-     */
-    @Test(description = "Valid login test case")
-    public void validLoginPostTest() {
+    @Test(dataProvider = "invalidLoginTestData")
+    public void invalidPostUserLoginTest(String username, String password) {
+        // Invalid Credentials Test
         given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"mySecretPassword\"}")
-                .when()
-                .post("/user/login")
-                .then()
-                .statusCode(200)
-                .body("X-Expires-After", equalTo("2024-05-01T12:00:00Z"))
-                .body("X-Rate-Limit", equalTo(100))
-                .body("token", notNullValue());
+                .queryParam("username", username)
+                .queryParam("password", password)
+                .header("Content-Type", "application/json").
+        when().
+                post("/user/login").
+        then().statusCode(400);
     }
 
-    /**
-     * Invalid password test case for POST method
-     */
-    @Test(description = "Invalid password test case")
-    public void invalidPasswordPostTest() {
+    /* PUT /user/login tests */
+
+    @Test(dataProvider = "validLoginTestData")
+    public void validPutUserLoginTest(String username, String password) {
+        // Valid Login Test
         given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"wrongPassword\"}")
-                .when()
-                .post("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
+                .queryParam("username", username)
+                .queryParam("password", password)
+                .header("Content-Type", "application/json").
+        when().
+                put("/user/login").
+        then().statusCode(200);
     }
 
-    /**
-     * Empty password test case for POST method
-     */
-    @Test(description = "Empty password test case")
-    public void emptyPasswordPostTest() {
+    @Test(dataProvider = "invalidLoginTestData")
+    public void invalidPutUserLoginTest(String username, String password) {
+        // Invalid Credentials Test
         given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"\"}")
-                .when()
-                .post("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
+                .queryParam("username", username)
+                .queryParam("password", password)
+                .header("Content-Type", "application/json").
+        when().
+                put("/user/login").
+        then().statusCode(400);
     }
 
-    /**
-     * Empty username test case for POST method
-     */
-    @Test(description = "Empty username test case")
-    public void emptyUsernamePostTest() {
+    /* DELETE /user/login tests */
+
+    @Test(dataProvider = "validLoginTestData")
+    public void validDeleteUserLoginTest(String username, String password) {
+        // Valid Login Test
         given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"\",\"password\":\"mySecretPassword\"}")
-                .when()
-                .post("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
+                .queryParam("username", username)
+                .queryParam("password", password)
+                .header("Content-Type", "application/json").
+        when().
+                delete("/user/login").
+        then().statusCode(200);
     }
 
-    /**
-     * Non-string username test case for POST method
-     */
-    @Test(description = "Non-string username test case")
-    public void nonStringUsernamePostTest() {
+    @Test(dataProvider = "invalidLoginTestData")
+    public void invalidDeleteUserLoginTest(String username, String password) {
+        // Invalid Credentials Test
         given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":12345,\"password\":\"mySecretPassword\"}")
-                .when()
-                .post("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
+                .queryParam("username", username)
+                .queryParam("password", password)
+                .header("Content-Type", "application/json").
+        when().
+                delete("/user/login").
+        then().statusCode(400);
     }
-
-    // GROUP 3 - PUT TESTS
-    /**
-     * Valid login test case for PUT method
-     */
-    @Test(description = "Valid login test case")
-    public void validLoginPutTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"mySecretPassword\"}")
-                .when()
-                .put("/user/login")
-                .then()
-                .statusCode(200)
-                .body("X-Expires-After", equalTo("2024-05-01T12:00:00Z"))
-                .body("X-Rate-Limit", equalTo(100))
-                .body("token", notNullValue());
-    }
-
-    /**
-     * Invalid password test case for PUT method
-     */
-    @Test(description = "Invalid password test case")
-    public void invalidPasswordPutTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"wrongPassword\"}")
-                .when()
-                .put("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
-    }
-
-    /**
-     * Empty password test case for PUT method
-     */
-    @Test(description = "Empty password test case")
-    public void emptyPasswordPutTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"\"}")
-                .when()
-                .put("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
-    }
-
-    /**
-     * Empty username test case for PUT method
-     */
-    @Test(description = "Empty username test case")
-    public void emptyUsernamePutTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"\",\"password\":\"mySecretPassword\"}")
-                .when()
-                .put("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
-    }
-
-    /**
-     * Non-string username test case for PUT method
-     */
-    @Test(description = "Non-string username test case")
-    public void nonStringUsernamePutTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":12345,\"password\":\"mySecretPassword\"}")
-                .when()
-                .put("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
-    }
-
-    // GROUP 4 - DELETE TESTS
-    /**
-     * Valid login test case for DELETE method
-     */
-    @Test(description = "Valid login test case")
-    public void validLoginDeleteTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"mySecretPassword\"}")
-                .when()
-                .delete("/user/login")
-                .then()
-                .statusCode(200)
-                .body("X-Expires-After", equalTo("2024-05-01T12:00:00Z"))
-                .body("X-Rate-Limit", equalTo(100))
-                .body("token", notNullValue());
-    }
-
-    /**
-     * Invalid password test case for DELETE method
-     */
-    @Test(description = "Invalid password test case")
-    public void invalidPasswordDeleteTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"wrongPassword\"}")
-                .when()
-                .delete("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
-    }
-
-    /**
-     * Empty password test case for DELETE method
-     */
-    @Test(description = "Empty password test case")
-    public void emptyPasswordDeleteTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"johnDoe\",\"password\":\"\"}")
-                .when()
-                .delete("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
-    }
-
-    /**
-     * Empty username test case for DELETE method
-     */
-    @Test(description = "Empty username test case")
-    public void emptyUsernameDeleteTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":\"\",\"password\":\"mySecretPassword\"}")
-                .when()
-                .delete("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
-    }
-
-    /**
-     * Non-string username test case for DELETE method
-     */
-    @Test(description = "Non-string username test case")
-    public void nonStringUsernameDeleteTest() {
-        given()
-                .header("Content-Type", ContentType.JSON.toString())
-                .body("{\"username\":12345,\"password\":\"mySecretPassword\"}")
-                .when()
-                .delete("/user/login")
-                .then()
-                .statusCode(400)
-                .body(equalTo(null));
-    }
+}

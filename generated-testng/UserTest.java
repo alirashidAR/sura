@@ -1,167 +1,128 @@
-import io.restassured.http.ContentType;
+import io.restassured.RestAssured;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.CoreMatchers.equalTo;
 
-public class UserAPITest {
+public class CreateUserTest extends TestBase {
 
     @BeforeClass
     public void setup() {
         RestAssured.baseURI = "https://api.example.com";
     }
 
-    // POST tests
-    /**
-     * Test case: Create a new user with valid token.
-     */
-    @Test(description = "Create a new user with valid token.")
-    public void testCase1_CreateUserWithValidToken() {
-        given().
-                header("Authorization", "Bearer valid-token").
-                body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(201).
-                contentType(ContentType.JSON).
-                body("username", equalTo("johnDoe")).
-                body("email", equalTo("johndoe@example.com"));
+    // CREATE USER - VALID REQUEST
+    @Test(dataProvider = "createUserValidRequest", description = "Create user with valid request")
+    public void createUserValidRequest(String username, String email, String password) {
+        given()
+                .pathParam("username", username)
+                .pathParam("email", email)
+                .pathParam("password", password)
+                .when()
+                .post("/user/{username}/{email}/{password}")
+                .then()
+                .statusCode(201);
     }
 
-    /**
-     * Test case: Create a new user with invalid token format.
-     */
-    @Test(description = "Create a new user with invalid token format.")
-    public void testCase2_CreateUserWithInvalidTokenFormat() {
-        given().
-                header("Authorization", "Bearer invalid-token-format").
-                body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(401).
-                contentType(ContentType.JSON).
-                body("error", equalTo("Invalid token format"));
+    @DataProvider(name = "createUserValidRequest")
+    public Object[][] createUserValidRequest() {
+        return new Object[][]{
+                {"johnDoe", "johndoe@example.com", "secret"}
+        };
     }
 
-    /**
-     * Test case: Create a new user with missing username.
-     */
-    @Test(description = "Create a new user with missing username.")
-    public void testCase3_CreateUserWithMissingUsername() {
-        given().
-                header("Authorization", "Bearer valid-token").
-                body("{\"email\":\"johndoe@example.com\",\"password\":\"password123\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(400).
-                contentType(ContentType.JSON).
-                body("error", equalTo("Username is required"));
+    // CREATE USER - MISSING USERNAME
+    @Test(dataProvider = "createUserMissingUsername", description = "Create user with missing username")
+    public void createUserMissingUsername(String email, String password) {
+        given()
+                .pathParam("email", email)
+                .pathParam("password", password)
+                .when()
+                .post("/user/{email}/{password}")
+                .then()
+                .statusCode(400);
     }
 
-    /**
-     * Test case: Create a new user with missing email.
-     */
-    @Test(description = "Create a new user with missing email.")
-    public void testCase4_CreateUserWithMissingEmail() {
-        given().
-                header("Authorization", "Bearer valid-token").
-                body("{\"username\":\"johnDoe\",\"password\":\"password123\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(400).
-                contentType(ContentType.JSON).
-                body("error", equalTo("Email is required"));
+    @DataProvider(name = "createUserMissingUsername")
+    public Object[][] createUserMissingUsername() {
+        return new Object[][]{
+                {"johndoe@example.com", "secret"}
+        };
     }
 
-    /**
-     * Test case: Create a new user with missing password.
-     */
-    @Test(description = "Create a new user with missing password.")
-    public void testCase5_CreateUserWithMissingPassword() {
-        given().
-                header("Authorization", "Bearer valid-token").
-                body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(400).
-                contentType(ContentType.JSON).
-                body("error", equalTo("Password is required"));
+    // CREATE USER - INVALID EMAIL
+    @Test(dataProvider = "createUserInvalidEmail", description = "Create user with invalid email")
+    public void createUserInvalidEmail(String username, String password) {
+        given()
+                .pathParam("username", username)
+                .pathParam("password", password)
+                .when()
+                .post("/user/{username}/invalid_email/{password}")
+                .then()
+                .statusCode(400);
     }
 
-    /**
-     * Test case: Create a new user with duplicate username.
-     */
-    @Test(description = "Create a new user with duplicate username.")
-    public void testCase6_CreateUserWithDuplicateUsername() {
-        given().
-                header("Authorization", "Bearer valid-token").
-                body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(409).
-                contentType(ContentType.JSON).
-                body("error", equalTo("Username already exists"));
+    @DataProvider(name = "createUserInvalidEmail")
+    public Object[][] createUserInvalidEmail() {
+        return new Object[][]{
+                {"johnDoe", "secret"}
+        };
     }
 
-    /**
-     * Test case: Create a new user without token.
-     */
-    @Test(description = "Create a new user without token.")
-    public void testCase7_CreateUserWithoutToken() {
-        given().
-                body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(401).
-                contentType(ContentType.JSON).
-                body("error", equalTo("Unauthorized"));
+    // CREATE USER - EMPTY USERNAME
+    @Test(dataProvider = "createUserEmptyUsername", description = "Create user with empty username")
+    public void createUserEmptyUsername(String email, String password) {
+        given()
+                .pathParam("email", email)
+                .pathParam("password", password)
+                .when()
+                .post("/user/{email}/{password}")
+                .then()
+                .statusCode(400);
     }
 
-    /**
-     * Test case: Create a new user with invalid token.
-     */
-    @Test(description = "Create a new user with invalid token.")
-    public void testCase8_CreateUserWithInvalidToken() {
-        given().
-                header("Authorization", "Bearer invalid-token").
-                body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(401).
-                contentType(ContentType.JSON).
-                body("error", equalTo("Unauthorized"));
+    @DataProvider(name = "createUserEmptyUsername")
+    public Object[][] createUserEmptyUsername() {
+        return new Object[][]{
+                {"johndoe@example.com", "secret"}
+        };
     }
 
-    /**
-     * Test case: Create a new user with invalid token format.
-     */
-    @Test(description = "Create a new user with invalid token format.")
-    public void testCase9_CreateUserWithInvalidTokenFormat() {
-        given().
-                header("Authorization", "Bearer invalid-token-format").
-                body("{\"username\":\"johnDoe\",\"email\":\"johndoe@example.com\",\"password\":\"password123\"}").
-        when().
-                post("/user").
-        then().
-                assertThat().
-                statusCode(401).
-                contentType(ContentType.JSON).
-                body("error", equalTo("Invalid token format"));
+    // CREATE USER - VALID REQUEST WITH CUSTOM HEADERS
+    @Test(dataProvider = "createUserValidRequestWithCustomHeaders", description = "Create user with valid request and custom headers")
+    public void createUserValidRequestWithCustomHeaders(String username, String email, String password) {
+        given()
+                .header("Content-Type", "application/json")
+                .pathParam("username", username)
+                .pathParam("email", email)
+                .pathParam("password", password)
+                .when()
+                .post("/user/{username}/{email}/{password}")
+                .then()
+                .statusCode(201);
+    }
+
+    @DataProvider(name = "createUserValidRequestWithCustomHeaders")
+    public Object[][] createUserValidRequestWithCustomHeaders() {
+        return new Object[][]{
+                {"johnDoe", "johndoe@example.com", "secret"}
+        };
+    }
+
+    // CREATE USER - INVALID REQUEST BODY
+    @Test(dataProvider = "createUserInvalidRequestBody", description = "Create user with invalid request body")
+    public void createUserInvalidRequestBody() {
+        given()
+                .when()
+                .post("/user/")
+                .then()
+                .statusCode(400);
+    }
+
+    @DataProvider(name = "createUserInvalidRequestBody")
+    public Object[][] createUserInvalidRequestBody() {
+        return new Object[]{};
     }
 }

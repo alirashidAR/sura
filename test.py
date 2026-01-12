@@ -11,7 +11,7 @@ def endpoint_signature(endpoint):
 
 
 def generate_tests_for_endpoint(endpoint, model="incept5/llama3.1-claude", max_retries=2):
-    patterns = retrieve_patterns(endpoint)
+    patterns = retrieve_patterns(endpoint["path"])
     if not patterns:
         pattern_text = "- No specific patterns found. Follow standard API testing best practices."
 
@@ -45,7 +45,7 @@ Path: {endpoint['path']}
 Description: {endpoint['description']}
 Parameters: {json.dumps(endpoint['parameters'])}
 RequestBody: {json.dumps(endpoint['requestBody'])}
-Responses: {json.dumps(endpoint['responses'])}
+Responses: {list(endpoint['responses'].keys())}
 
 IMPORTANT:
 - Follow the reference patterns strictly
@@ -57,6 +57,7 @@ IMPORTANT:
         try:
             signature = endpoint_signature(endpoint)
             cached = get_cached(signature)
+            
             if cached:
                 print(f"[FAST-PATH] Using cached test cases for {signature}")
                 return cached
@@ -65,18 +66,30 @@ IMPORTANT:
                 messages=[{"role": "user", "content": prompt}],
             )
 
+            # content = completion["message"]["content"]
             content = completion["message"]["content"]
 
+            if not content or not content.strip():
+                    raise ValueError("Empty LLM response")
             match = re.search(r"```json\s*(.*?)\s*```", content, re.DOTALL)
             if match:
                 content = match.group(1)
-
-            result =  {
-                "tests": json.loads(content),
-                "patterns_used": pattern_names
-            }
-            store_cached(signature, result)
-            return result
+            if not content.strip().startswith("["):
+                raise ValueError("Non-JSON response")
+            try:
+                tests_json = json.loads(content)
+                result = {
+                    "tests": tests_json,
+                    "patterns_used": pattern_names
+                }
+                store_cached(signature, result)
+                return result
+            except json.JSONDecodeError:
+                print(f"[WARN] Non-JSON response for {endpoint['path']}")
+                return {
+                    "tests": [],
+                    "patterns_used": pattern_names
+                }
         except Exception as e:
             if attempt + 1 == max_retries:
                 print(f"Failed for {endpoint['path']}: {e}")
