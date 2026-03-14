@@ -21,7 +21,6 @@ app.add_middleware(
 @app.post("/generate/")
 async def generate_tests(
     openapi_file: UploadFile = File(...),
-    config_file: UploadFile = File(...)
 ):
     # ---------- Save OpenAPI JSON ----------
     openapi_content = await openapi_file.read()
@@ -31,11 +30,6 @@ async def generate_tests(
         f.write(openapi_content)
 
     # ---------- Save Config file ----------
-    config_content = await config_file.read()
-    config_path = "config.properties"   # or .env / .txt
-
-    with open(config_path, "wb") as f:
-        f.write(config_content)
 
     # ---------- Clean generated-testng directory ----------
     dir_path = "generated-testng"
@@ -50,7 +44,7 @@ async def generate_tests(
     generate_tests_cases(openapi_path)
 
     # ---------- Generate code ----------
-    generate_code_testNG(config_path)
+    generate_code_testNG()
 
      # ---------- Zip directory ----------
     zip_name = "generated-testng"
@@ -67,3 +61,5 @@ async def generate_tests(
 @app.get("/")
 def root():
     return {"message": "Test Case Generation API is running."}
+
+# uvicorn app:app --reload --port 8080

@@ -1,147 +1,126 @@
-import io.restassured.http.ContentType;
-import io.restassured.path.json.JsonPath;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
 
-public class PetImageUploadTest {
+public class PetUploadImageTests {
 
     @BeforeClass
     public void setup() {
-        RestAssured.baseURI = "https://api.example.com";
+        RestAssured.baseURI = ConfigLoader.getBaseUrl();
     }
 
-    // Grouping test methods by HTTP method
+    // ================= POST TESTS =================
 
-    /**
-     * Positive scenarios for POST /pet/{petId}/uploadImage
-     */
-    @DataProvider(name = "postTestData")
-    public Object[][] postTestDataProvider() {
+    @Test(dataProvider = "uploadImageData")
+    public void testUploadImage(Response response, int petId, String expectedStatus) {
+        Assert.assertEquals(response.getStatusCode(), Integer.parseInt(expectedStatus));
+        Assert.assertTrue(response.getBody().asString().contains("success"));
+        Assert.assertNotNull(response.jsonPath().get("id"));
+    }
+
+    @DataProvider(name = "uploadImageData")
+    public Object[][] provideUploadImageData() {
         return new Object[][]{
                 {
-                        1,
-                        null,
-                        null,
-                        "{\"file\":{\"filename\":\"valid_image.jpg\",\"size\":100000,\"type\":\"image/jpeg\"}}"
+                        given()
+                                .pathParam("petId", 123)
+                                .header("Content-Type", "multipart/form-data")
+                                .body(new PetUploadImageRequest("Some metadata", "image content"))
+                                .when()
+                                .post("/pet/{petId}/uploadImage")
+                                .then()
+                                .statusCode(200)
+                                .extract().response(),
+                        123,
+                        "200"
                 },
                 {
-                        1,
-                        null,
-                        null,
-                        "{\"file\":{\"filename\":\"large_image.jpg\",\"size\":1000000,\"type\":\"image/jpeg\"}}"
-                }
-        };
-    }
-
-    /**
-     * Negative scenarios for POST /pet/{petId}/uploadImage
-     */
-    @DataProvider(name = "postNegativeTestData")
-    public Object[][] postNegativeTestData() {
-        return new Object[][]{
-                {
-                        -1,
-                        null,
-                        null,
-                        "{\"file\":{\"filename\":\"valid_image.jpg\",\"size\":100000,\"type\":\"image/jpeg\"}}"
+                        given()
+                                .pathParam("petId", "abc")
+                                .header("Content-Type", "multipart/form-data")
+                                .body(new PetUploadImageRequest("Some metadata", "image content"))
+                                .when()
+                                .post("/pet/{petId}/uploadImage")
+                                .then()
+                                .statusCode(400)
+                                .extract().response(),
+                        "abc",
+                        "400"
                 },
                 {
-                        1,
-                        null,
-                        null,
-                        "{\"file\":{\"filename\":\"invalid_image.exe\",\"size\":100000,\"type\":\"application/octet-stream\"}}"
-                }
-        };
-    }
-
-    /**
-     * Edge cases for POST /pet/{petId}/uploadImage
-     */
-    @DataProvider(name = "postEdgeCaseData")
-    public Object[][] postEdgeCaseTestData() {
-        return new Object[][]{
+                        given()
+                                .pathParam("petId", 123)
+                                .header("Content-Type", "multipart/form-data")
+                                .body(new PetUploadImageRequest("Some metadata"))
+                                .when()
+                                .post("/pet/{petId}/uploadImage")
+                                .then()
+                                .statusCode(400)
+                                .extract().response(),
+                        123,
+                        "400"
+                },
                 {
-                        1,
-                        null,
-                        null,
-                        "{\"file\":{\"filename\":\"large_image.jpg\",\"size\":1000000,\"type\":\"image/jpeg\"}}"
+                        given()
+                                .pathParam("petId", 123)
+                                .header("Content-Type", "multipart/form-data")
+                                .body(new PetUploadImageRequest("Some metadata", "large image content", 1000000))
+                                .when()
+                                .post("/pet/{petId}/uploadImage")
+                                .then()
+                                .statusCode(413)
+                                .extract().response(),
+                        123,
+                        "413"
+                },
+                {
+                        given()
+                                .pathParam("petId", 123)
+                                .header("Content-Type", "multipart/form-data")
+                                .body(new PetUploadImageRequest("Some metadata", "image content"))
+                                .when()
+                                .post("/pet/{petId}/uploadImage")
+                                .then()
+                                .statusCode(200)
+                                .extract().response(),
+                        123,
+                        "200"
                 }
         };
     }
 
-    @Test(dataProvider = "postTestData")
-    public void testUploadImageValidPetId(int petId, Object queryParam, String header, String request) {
-        given()
-                .baseUri(RestAssured.baseURI)
-                .pathParam("petId", petId)
-                .body(request)
-                .when()
-                .post("/pet/{petId}/uploadImage")
-                .then()
-                .statusCode(200);
-    }
+    public static class PetUploadImageRequest {
+        private String additionalMetadata;
+        private String fileContent;
+        private int fileSize;
 
-    @Test(dataProvider = "postEdgeCaseData")
-    public void testUploadImageLargeFile(int petId, Object queryParam, String header, String request) {
-        given()
-                .baseUri(RestAssured.baseURI)
-                .pathParam("petId", petId)
-                .body(request)
-                .when()
-                .post("/pet/{petId}/uploadImage")
-                .then()
-                .statusCode(413);
-    }
+        public PetUploadImageRequest(String additionalMetadata, String fileContent) {
+            this.additionalMetadata = additionalMetadata;
+            this.fileContent = fileContent;
+        }
 
-    @Test(dataProvider = "postNegativeTestData")
-    public void testUploadImageInvalidPetId(int petId, Object queryParam, String header, String request) {
-        given()
-                .baseUri(RestAssured.baseURI)
-                .pathParam("petId", petId)
-                .body(request)
-                .when()
-                .post("/pet/{petId}/uploadImage")
-                .then()
-                .statusCode(404);
-    }
+        public PetUploadImageRequest(String additionalMetadata, String fileContent, int fileSize) {
+            this.additionalMetadata = additionalMetadata;
+            this.fileContent = fileContent;
+            this.fileSize = fileSize;
+        }
 
-    @Test(dataProvider = "postNegativeTestData")
-    public void testUploadImageInvalidFileType(int petId, Object queryParam, String header, String request) {
-        given()
-                .baseUri(RestAssured.baseURI)
-                .pathParam("petId", petId)
-                .body(request)
-                .when()
-                .post("/pet/{petId}/uploadImage")
-                .then()
-                .statusCode(400);
-    }
+        public String getAdditionalMetadata() {
+            return additionalMetadata;
+        }
 
-    @Test
-    public void testUploadImageWithoutPetId() {
-        given()
-                .baseUri(RestAssured.baseURI)
-                .pathParam("petId", -1)
-                .body("")
-                .when()
-                .post("/pet/{petId}/uploadImage")
-                .then()
-                .statusCode(400);
-    }
+        public String getFileContent() {
+            return fileContent;
+        }
 
-    @Test
-    public void testUploadImageWithoutAdditionalMetadata() {
-        given()
-                .baseUri(RestAssured.baseURI)
-                .pathParam("petId", 1)
-                .body("")
-                .when()
-                .post("/pet/{petId}/uploadImage")
-                .then()
-                .statusCode(200);
+        public int getFileSize() {
+            return fileSize;
+        }
     }
 }
+// This class follows the provided framework rules and includes all the necessary imports, setup, and test cases for the API endpoint `/pet/{petId}/uploadImage`. The `testUploadImage` method is used to verify the HTTP status code, response body content, and required JSON keys for each test case. The `provideUploadImageData` method is used to provide the test data for the `testUploadImage` method using the `@DataProvider` annotation.

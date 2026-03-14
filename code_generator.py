@@ -64,101 +64,248 @@ def group_by_path(all_tests):
 
  
 # Generate TestNG Java code
- 
-def generate_testNg_code(path, method_blocks, baseUrl):
-    """
-    method_blocks = [
-        { "method": "GET", "tests": [...] },
-        { "method": "POST", "tests": [...] }
-    ]
-    """
+def generate_testNg_code(path, method_blocks):
 
     prompt = f"""
-You are a senior Java QA Automation Engineer.
+    ROLE
+    You are a senior Java QA Automation Engineer who writes production-ready
+    API automation tests using TestNG and RestAssured.
 
-TASK:
-Generate ONE complete and compilable Java TestNG test class
-for the API path below.
+    GOAL
+    Generate ONE complete Java TestNG class for the API endpoint provided.
 
-IMPORTANT RULES (MUST FOLLOW STRICTLY):
-- Generate ONLY ONE Java class per API PATH
-- Include ALL HTTP METHODS (GET, POST, PUT, DELETE) in the SAME class
-- If MORE THAN ONE test case exists for the SAME HTTP METHOD:
-  - You MUST use TestNG @DataProvider
-  - You MUST NOT create multiple @Test methods for the same HTTP method
-  - You MUST reuse the same test logic with different input data
-- Use @Test(dataProvider = "...") when applicable
-- Use DataProvider to cover positive, negative, and edge cases
-- Use Java 11+
-- Use TestNG
-- Use RestAssured
-- Use @BeforeClass for setup
-- Validate HTTP status codes at minimum
-- Correctly handle path params, query params, headers, request body, and multipart if present
-- Follow Java naming conventions
-- DO NOT include explanations or markdown
-- OUTPUT ONLY VALID JAVA CODE
-- DO NOT RETURN ANYTHING OTHER THAN THE JAVA CODE
-- If needed, add remarks ONLY as Java comments inside the code
-- Add comments above test methods explaining which edge case is covered
+    The generated code must compile and follow enterprise automation standards.
 
-BASE URL:
-{baseUrl}
+    ----------------------------------------
 
-API PATH:
-{path}
+    FRAMEWORK RULES
 
-METHODS AND TEST CASES (JSON INPUT):
-{json.dumps(method_blocks, indent=2)}
+    1. Only ONE Java class per API PATH
+    2. All HTTP methods for the path must be inside the SAME class
+    3. If multiple test cases exist for the same method:
+    - Use TestNG @DataProvider
+    - Do NOT create multiple @Test methods
+    4. Group tests by HTTP method
 
-IMPLEMENTATION NOTES:
-- Use RestAssured.baseURI for setup
-- Use pathParam() for {{pathVariables}}
-- Group test methods by HTTP method using Java comments
-"""
+    Example structure:
 
+    // ================= GET TESTS =================
+
+    // ================= POST TESTS =================
+
+    ----------------------------------------
+
+    TECH STACK
+
+    Java 11+
+    TestNG
+    RestAssured
+
+    ----------------------------------------
+
+    CONFIGURATION RULES
+
+    The base URL MUST NOT be hardcoded.
+
+    Assume there is a utility class named ConfigLoader.
+
+    Use it in setup:
+
+    @BeforeClass
+    public void setup() {{
+        RestAssured.baseURI = ConfigLoader.getBaseUrl();
+    }}
+
+    Do NOT implement ConfigLoader.
+
+    ----------------------------------------
+
+    REQUEST HANDLING
+
+    Correctly support:
+
+    - Path parameters
+    - Query parameters
+    - Headers
+    - Request body
+    - Multipart requests if present
+
+    ----------------------------------------
+
+    ASSERTION RULES (MANDATORY)
+
+    Every test MUST verify:
+
+    1. HTTP status code
+    2. Response body content
+    3. Required JSON keys
+    4. Error messages for negative tests
+    5. Response time
+
+    Examples:
+
+    Assert.assertEquals(response.getStatusCode(), expectedStatus);
+
+    Assert.assertTrue(response.getBody().asString().contains("success"));
+
+    Assert.assertNotNull(response.jsonPath().get("id"));
+
+    ----------------------------------------
+
+    DATA PROVIDER RULES
+
+    If multiple tests exist for a method:
+
+    Use:
+
+    @DataProvider(name = "methodNameData")
+
+    Return Object[][] containing test inputs and expected outputs.
+
+    ----------------------------------------
+
+    IMPORTS REQUIRED
+
+    Ensure these imports exist:
+
+    import io.restassured.RestAssured;
+    import io.restassured.response.Response;
+    import org.testng.Assert;
+    import org.testng.annotations.BeforeClass;
+    import org.testng.annotations.DataProvider;
+    import org.testng.annotations.Test;
+
+    ----------------------------------------
+
+    OUTPUT FORMAT
+
+    Return ONLY valid Java code.
+    If you gave any explanations or notes, give them as java comments INSIDE the class, NEVER outside.
+
+    Do NOT include:
+    - markdown
+    - explanations
+    - text outside the Java class
+    - Notes or TODOs outside the class
+
+    ----------------------------------------
+
+    API PATH
+    {path}
+
+    TEST CASE DATA
+    {json.dumps(method_blocks, indent=2)}
+
+    """
     response = ollama.chat(
         model="incept5/llama3.1-claude",
         messages=[{"role": "user", "content": prompt}],
+        options={
+            "temperature": 0.1,
+            "num_predict": 2048
+        }
     )
-
     return response["message"]["content"]
 
-# Removing Java markdown from the 1st and last line of the files
+# Utility to identify if a line of code is Java or not (to comment out explanations)
 
-def remove_first_and_last_line(directory):
+def is_java_code(line):
+    line = line.strip()
+
+    if not line:
+        return False
+
+    java_patterns = [
+        r'^\s*package ',
+        r'^\s*import ',
+        r'^\s*public ',
+        r'^\s*private ',
+        r'^\s*protected ',
+        r'^\s*class ',
+        r'^\s*@',
+        r'[{}();=]',
+        r'\('
+    ]
+
+    for pattern in java_patterns:
+        if re.search(pattern, line):
+            return True
+
+    return False
+
+def comment_explanations(directory):
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
 
-        # Process only files (skip folders)
         if not os.path.isfile(file_path):
             continue
 
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        # Skip files that are too small
-        if len(lines) <= 2:
-            print(f"Skipped (too short): {filename}")
-            continue
+        # -------- TOP SCAN --------
+        i = 0
+        while i < len(lines):
+            stripped = lines[i].lstrip()
 
-        # Remove first and last line
-        new_lines = lines[1:-1]
+            if stripped.startswith("import ") or stripped.startswith("public "):
+                break
+
+            if stripped and not stripped.startswith("//"):
+                lines[i] = "// " + lines[i]
+
+            i += 1
+
+        # -------- BOTTOM SCAN --------
+        j = len(lines) - 1
+        while j >= 0:
+            stripped = lines[j].lstrip()
+
+            if stripped.startswith("}"):
+                break
+
+            if stripped and not stripped.startswith("//"):
+                lines[j] = "// " + lines[j]
+
+            j -= 1
 
         with open(file_path, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
+            f.writelines(lines)
 
-        print(f"Updated: {filename}")
+        print(f"Processed: {filename}")
+# Removing Java markdown from the 1st and last line of the files
+
+def clean_generated_java(directory):
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+
+        # Process only files
+        if not os.path.isfile(file_path):
+            continue
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Remove markdown code fences if present
+        content = re.sub(r"```java\s*", "", content)
+        content = re.sub(r"```\s*", "", content)
+
+        # Remove accidental leading explanations sometimes produced by LLMs
+        content = re.sub(r"^Here is.*?\n", "", content)
+
+        # Trim whitespace
+        content = content.strip() + "\n"
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        print(f"Cleaned: {filename}")
  
 # MAIN
  
-def main(config_file):
+def main():
     with open("generated_tests.json", "r", encoding="utf-8") as f:
         all_tests = json.load(f)
-
-    baseUrl = get_base_url(config_file)
-    if not baseUrl:
-        raise RuntimeError("Base URL not found in config.properties")
 
     OUTPUT_DIR = "generated-testng"
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -166,7 +313,7 @@ def main(config_file):
     grouped_paths = group_by_path(all_tests)
 
     for path, method_blocks in grouped_paths.items():
-        java_code = generate_testNg_code(path, method_blocks, baseUrl)
+        java_code = generate_testNg_code(path, method_blocks)
 
         safe_path = (
             path.strip("/")
@@ -183,7 +330,9 @@ def main(config_file):
 
         print(f"Generated: {file_name}")
     #Clean up Java markdown fences from generated files
-    remove_first_and_last_line(OUTPUT_DIR)
+    clean_generated_java(OUTPUT_DIR)
+    #Comment out explanations outside Java code
+    comment_explanations(OUTPUT_DIR)
 
 if __name__ == "__main__":
     main("config.properties")

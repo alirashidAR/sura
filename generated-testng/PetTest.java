@@ -1,76 +1,251 @@
 import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class PetAPITests {
 
     @BeforeClass
     public void setup() {
-        // Setup Rest Assured with the base URI
-        RestAssured.baseURI = "https://api.example.com";
+        RestAssured.baseURI = ConfigLoader.getBaseUrl();
     }
 
-    @DataProvider(name = "petData")
-    public Object[][] dataProvider() {
+    // ================= GET TESTS =================
+
+    // No GET tests are provided in the test case data
+
+    // ================= POST TESTS =================
+
+    @Test(dataProvider = "postTests")
+    public void postPetTest(Map<String, Object> testData) {
+        Response response = RestAssured.given()
+                .pathParams("pet_id", testData.get("pet_id"))
+                .queryParams(testData.get("query_params"))
+                .headers(testData.get("headers"))
+                .body(testData.get("body"))
+                .when()
+                .post("/pet");
+
+        Assert.assertEquals(response.getStatusCode(), testData.get("expected_status"));
+        Assert.assertTrue(response.getBody().asString().contains("success"));
+        Assert.assertNotNull(response.jsonPath().get("id"));
+        Assert.assertEquals(response.getTime(), testData.get("expected_time"));
+    }
+
+    @DataProvider(name = "postTests")
+    public Object[][] postTests() {
         return new Object[][]{
-                {"Valid Pet PUT Request", "{\"id\":1,\"category\":{\"name\":\"Dogs\"},\"name\":\"Max\",\"photoUrls\":[\"http://example.com/image1.jpg\",\"http://example.com/image2.jpg\"],\"tags\":[{\"name\":\"tag1\"},{\"name\":\"tag2\"}]}"},
-                {"Invalid Pet PUT Request - Missing ID", ""},
-                {"Invalid Pet PUT Request - Invalid Category", "{\"id\":1,\"category\":{\"name\":\"Invalid Category\"},\"name\":\"Max\",\"photoUrls\":[\"http://example.com/image1.jpg\",\"http://example.com/image2.jpg\"],\"tags\":[{\"name\":\"tag1\"},{\"name\":\"tag2\"}]}"},
-                {"Pet PUT Request with Invalid Tags", "{\"id\":1,\"category\":{\"name\":\"Dogs\"},\"name\":\"Max\",\"photoUrls\":[\"http://example.com/image1.jpg\",\"http://example.com/image2.jpg\"],\"tags\":[{\"name\":\"tag1\"},{\"name\":\"Invalid Tag\"}]}"},
-                {"Non-Existent Pet PUT Request", "{\"id\":1,\"category\":{\"name\":\"Dogs\"},\"name\":\"Max\",\"photoUrls\":[\"http://example.com/image1.jpg\",\"http://example.com/image2.jpg\"],\"tags\":[{\"name\":\"tag1\"},{\"name\":\"tag2\"}]}"}
+                {
+                        "Happy Path",
+                        new HashMap<String, Object>() {{
+                            put("pet_id", "");
+                            put("query_params", "");
+                            put("headers", new HashMap<String, String>() {{
+                                put("Content-Type", "application/json");
+                            }});
+                            put("body", new HashMap<String, Object>() {{
+                                put("id", 123);
+                                put("name", "Buddy");
+                                put("tag", "dog");
+                            }});
+                            put("expected_status", 200);
+                            put("expected_time", 100);
+                        }},
+                        {
+                                "Missing Required Field",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", "");
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "application/json");
+                                    }});
+                                    put("body", new HashMap<String, Object>() {{
+                                        put("name", "Buddy");
+                                        put("tag", "dog");
+                                    }});
+                                    put("expected_status", 400);
+                                    put("expected_time", 100);
+                                }},
+                        },
+                        {
+                                "Invalid Request Body",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", "");
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "application/json");
+                                    }});
+                                    put("body", new HashMap<String, Object>() {{
+                                        put("id", "123");
+                                        put("name", "Buddy");
+                                        put("tag", "dog");
+                                    }});
+                                    put("expected_status", 400);
+                                    put("expected_time", 100);
+                                }},
+                        },
+                        {
+                                "Invalid Content-Type",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", "");
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "text/plain");
+                                    }});
+                                    put("body", new HashMap<String, Object>() {{
+                                        put("id", 123);
+                                        put("name", "Buddy");
+                                        put("tag", "dog");
+                                    }});
+                                    put("expected_status", 415);
+                                    put("expected_time", 100);
+                                }},
+                        },
+                        {
+                                "Method Not Allowed",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", "");
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "application/json");
+                                    }});
+                                    put("body", new HashMap<String, Object>() {{
+                                        put("id", 123);
+                                        put("name", "Buddy");
+                                        put("tag", "dog");
+                                    }});
+                                    put("expected_status", 405);
+                                    put("expected_time", 100);
+                                }},
+                        }
+                }
         };
     }
 
-    @Test(dataProvider = "petData", dataProviderClass = PetAPITests.class, groups = {"General"})
-    public void putPet(String testName, String requestBody) {
-        // PUT /pet
-        RestAssured.given()
-                .header("Content-Type", "application/json")
-                .pathParam("id", 1)
-                .body(requestBody)
-                .when().put("/pet/{id}")
-                .then().statusCode(Integer.parseInt(getExpectedStatus(testName)));
+    // ================= PUT TESTS =================
+
+    @Test(dataProvider = "putTests")
+    public void putPetTest(Map<String, Object> testData) {
+        Response response = RestAssured.given()
+                .pathParams("pet_id", testData.get("pet_id"))
+                .queryParams(testData.get("query_params"))
+                .headers(testData.get("headers"))
+                .body(testData.get("body"))
+                .when()
+                .put("/pet");
+
+        Assert.assertEquals(response.getStatusCode(), testData.get("expected_status"));
+        Assert.assertTrue(response.getBody().asString().contains("success"));
+        Assert.assertNotNull(response.jsonPath().get("id"));
+        Assert.assertEquals(response.getTime(), testData.get("expected_time"));
     }
 
-    @Test(dataProvider = "petData", dataProviderClass = PetAPITests.class, groups = {"General"})
-    public void getPet(String testName, String requestBody) {
-        // GET /pet
-        RestAssured.given()
-                .header("Content-Type", "application/json")
-                .queryParam("id", 1)
-                .body(requestBody)
-                .when().get("/pet/{id}")
-                .then().statusCode(Integer.parseInt(getExpectedStatus(testName)));
-    }
-
-    @Test(dataProvider = "petData", dataProviderClass = PetAPITests.class, groups = {"General"})
-    public void postPet(String testName, String requestBody) {
-        // POST /pet
-        RestAssured.given()
-                .header("Content-Type", "application/json")
-                .body(requestBody)
-                .when().post("/pet")
-                .then().statusCode(Integer.parseInt(getExpectedStatus(testName)));
-    }
-
-    @Test(dataProvider = "petData", dataProviderClass = PetAPITests.class, groups = {"General"})
-    public void deletePet(String testName, String requestBody) {
-        // DELETE /pet
-        RestAssured.given()
-                .header("Content-Type", "application/json")
-                .pathParam("id", 1)
-                .body(requestBody)
-                .when().delete("/pet/{id}")
-                .then().statusCode(Integer.parseInt(getExpectedStatus(testName)));
-    }
-
-    private int getExpectedStatus(String testName) {
-        if (testName.equals("Valid Pet PUT Request")) return 200;
-        else if (testName.equals("Invalid Pet PUT Request - Missing ID")) return 400;
-        else if (testName.equals("Invalid Pet PUT Request - Invalid Category")) return 400;
-        else if (testName.equals("Pet PUT Request with Invalid Tags")) return 400;
-        else if (testName.equals("Non-Existent Pet PUT Request")) return 404;
-        else return 200;
+    @DataProvider(name = "putTests")
+    public Object[][] putTests() {
+        return new Object[][]{
+                {
+                        "Happy Path - Pet Added",
+                        new HashMap<String, Object>() {{
+                            put("pet_id", 123);
+                            put("query_params", "");
+                            put("headers", new HashMap<String, String>() {{
+                                put("Content-Type", "application/json");
+                            }});
+                            put("body", new HashMap<String, Object>() {{
+                                put("id", 123);
+                                put("name", "Fido");
+                                put("tag", "dog");
+                            }});
+                            put("expected_status", 200);
+                            put("expected_time", 100);
+                        }},
+                        {
+                                "Missing Required Field - Name",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", 123);
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "application/json");
+                                    }});
+                                    put("body", new HashMap<String, Object>() {{
+                                        put("id", 123);
+                                        put("tag", "dog");
+                                    }});
+                                    put("expected_status", 400);
+                                    put("expected_time", 100);
+                                }},
+                        },
+                        {
+                                "Invalid Pet Object - Bad JSON",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", 123);
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "application/json");
+                                    }});
+                                    put("body", "Invalid JSON");
+                                    put("expected_status", 400);
+                                    put("expected_time", 100);
+                                }},
+                        },
+                        {
+                                "Resource Not Found - Pet ID",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", 123);
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "application/json");
+                                    }});
+                                    put("body", new HashMap<String, Object>() {{
+                                        put("id", 123);
+                                        put("name", "Fido");
+                                        put("tag", "dog");
+                                    }});
+                                    put("expected_status", 404);
+                                    put("expected_time", 100);
+                                }},
+                        },
+                        {
+                                "Method Not Allowed",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", 123);
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "application/json");
+                                    }});
+                                    put("body", new HashMap<String, Object>() {{
+                                        put("id", 123);
+                                        put("name", "Fido");
+                                        put("tag", "dog");
+                                    }});
+                                    put("expected_status", 405);
+                                    put("expected_time", 100);
+                                }},
+                        },
+                        {
+                                "Empty Body",
+                                new HashMap<String, Object>() {{
+                                    put("pet_id", 123);
+                                    put("query_params", "");
+                                    put("headers", new HashMap<String, String>() {{
+                                        put("Content-Type", "application/json");
+                                    }});
+                                    put("body", new HashMap<String, Object>() {{
+                                        put("id", 123);
+                                        put("name", "Fido");
+                                        put("tag", "dog");
+                                    }});
+                                    put("expected_status", 400);
+                                    put("expected_time", 100);
+                                }},
+                        }
+                }
+        };
     }
 }
+// Note that I've assumed that the `ConfigLoader` class is already implemented and provides the `getBaseUrl()` method. Also, I've used the `HashMap` class to represent the test data, as it's easier to work with than the `Object[][]` array.
