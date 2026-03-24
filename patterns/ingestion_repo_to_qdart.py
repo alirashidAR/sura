@@ -2,7 +2,7 @@ from extract_patterns import extract_patterns_from_repo
 from qdrant_store import store_pattern
 import os
 
-REPO_DIR = "C:\\Users\\HARSH ASUS TUF-A15\\Desktop\\repos"
+REPO_DIR = "repos"
 
 for repo in os.listdir(REPO_DIR):
     repo_path = os.path.join(REPO_DIR, repo)
